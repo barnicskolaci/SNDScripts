@@ -23,9 +23,10 @@
 -- #########]]
 
 local use_external_character_list = true -- Options: true = uses the external character list in the same folder, default name being char_list.lua, false uses the list you put in this file
-char_script_name = "GameObject Turnin" -- name of script to run after each character
-cycle_script_name = "" -- name of script to run once this script finishes
-return_location = "auto" -- where toons go after running script. same as using /li return_location
+local char_script_name = "GameObject Turnin" -- name of script to run after each character
+local cycle_script_name = "" -- name of script to run once this script finishes
+local return_location = "auto" -- where toons go after running script. same as using /li return_location
+local enable_multi = false -- Options: true = enable AR multi after running script, false = don't
 
 
 --[[ This is where you put your character list if you choose to NOT use the external one
@@ -142,3 +143,6 @@ end
 RelogAndDoThing()
 Sleep(1) --!! just in case, may not be needed
 yield("/snd run "..cycle_script_name)
+if enable_multi then
+    yield("/ays m e")
+end
