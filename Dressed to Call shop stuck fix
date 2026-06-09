@@ -1,3 +1,11 @@
+--[=====[
+[[SND Metadata]]
+version: 1.0.0
+triggers:
+- onterritorychange
+
+[[End Metadata]]
+--]=====]
 local zoneID = Svc.ClientState.TerritoryType
 
 function WaitForLifestream()
@@ -90,3 +98,56 @@ while zoneID == 134 do
          end
     end
 end
+
+--if Inventory.GetFreeInventorySlots() < 100 then
+--    mode = 1
+--end
+--[[
+if mode ~= 0 then
+        local counter = 0
+        while Svc.Targets.Target == nil or Svc.Targets.Target.Name:GetText() ~= "Summoning Bell" do
+            Dalamud.Log("[RR processing] Targeting summoning bell")
+            yield("/target Summoning Bell")
+            sleep(0.5)
+        end
+        while not IsAddonExists("RetainerList") do
+            yield("/interact")
+            sleep(1)
+        end
+    sleep(1)
+    Dalamud.Log("[RR processing] Retainer Repricer")
+    if mode == 2 then
+        yield("/rr start")
+    else
+        yield("/rr start sell")
+    end
+    while IsAddonExists("RetainerList") do
+        sleep(0.5)
+        if counter < 20 then
+            sleep(0.5)
+            if IsAddonExists("RetainerList") or not IsPlayerOccupied() then
+                counter = counter+1
+            else
+                counter = 0
+            end
+        else
+            yield("/snd stop all")
+            yield("/callback RetainerList true -1")
+            yield("/rr stop")
+            sleep(1)
+        end
+    end
+    counter = 0
+    while counter < 6 do
+        sleep(0.5)
+        if IsAddonExists("RetainerList") or not IsPlayerOccupied() then
+            counter = counter+1
+        else
+            counter = 0
+        end
+    end
+    if IsAddonExists("RetainerList") then
+            yield("/callback RetainerList true -1")
+    end
+end
+]]
