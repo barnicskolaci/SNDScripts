@@ -88,7 +88,7 @@ sleep(5)
 --Dressed to Call: stuck on Buyback tab of shop
 while zoneID == 134 do
     sleep(3)
-    if IsAddonExists("RetainerList") then
+    if IsAddonExists("Shop") then
         sleep(3)
         while IsAddonExists("Shop") do
             yield('/send NUMPAD9')
