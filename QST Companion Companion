@@ -1,8 +1,9 @@
 --[=====[
 [[SND Metadata]]
-version: 1.0.0
+version: 1.0.2
 triggers:
 - onterritorychange
+- onlogin
 
 [[End Metadata]]
 --]=====]
@@ -84,17 +85,14 @@ function sleep(seconds)
 end
 
 sleep(5)
+--Dressed to Call: stuck on Buyback tab of shop
 while zoneID == 134 do
     sleep(3)
     if IsAddonExists("RetainerList") then
         sleep(3)
-        if IsAddonExists("Shop") then
+        while IsAddonExists("Shop") do
             yield('/send NUMPAD9')
-            yield('/wait 0.001')
-            yield('/send NUMPAD9')
-            yield('/wait 0.001')
-            yield('/send NUMPAD9')
-            yield('/wait 0.001')
+            sleep(1)
          end
     end
 end
