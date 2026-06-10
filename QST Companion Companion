@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.0.2
+version: 1.0.4
 triggers:
 - onterritorychange
 - onlogin
