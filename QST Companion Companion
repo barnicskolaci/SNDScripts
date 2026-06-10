@@ -95,6 +95,15 @@ while zoneID == 134 do
             sleep(1)
          end
     end
+--Way of the Marauder unstuck from rotation failing to start
+    if IPC.Questionable.GetCurrentQuestId() == "311" then
+        local target = Entity.Target.Name
+        sleep(15)
+        if Entity.Target.Name == target then
+            yield("/rsr auto")
+            sleep(1)
+         end
+    end
 end
 
 --if Inventory.GetFreeInventorySlots() < 100 then
