@@ -106,6 +106,16 @@ while zoneID == 134 do
     end
 end
 
+--Victory in Peril stuck
+while zoneID == 249 do
+    sleep(3)
+    yield('/send TAB')
+    sleep(1)
+    yield('/send NUMPAD0')
+    sleep(1)
+    yield('/vnav movetarget')
+end
+
 --if Inventory.GetFreeInventorySlots() < 100 then
 --    mode = 1
 --end
