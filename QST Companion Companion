@@ -106,8 +106,8 @@ while zoneID == 134 do
     end
 end
 
---Victory in Peril stuck
-while zoneID == 249 do
+--'Victory in Peril' and 'Feint and Strike' stuck
+while zoneID == 249 or 280 do
     sleep(3)
     yield('/send TAB')
     sleep(1)
