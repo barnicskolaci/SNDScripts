@@ -107,13 +107,17 @@ while zoneID == 134 do
 end
 
 --'Victory in Peril' and 'Feint and Strike' stuck
-while zoneID == 249 or 280 do
-    sleep(3)
-    yield('/send TAB')
-    sleep(1)
-    yield('/send NUMPAD0')
-    sleep(1)
-    yield('/vnav movetarget')
+if zoneID == 249 or 280 then
+    while Svc.Condition[56] or Svc.Condition[34] do
+        yield('/vbm cfg aiconfig forbidactions false')
+        sleep(1)
+        yield('/send TAB')
+        sleep(1)
+        yield('/send NUMPAD0')
+        sleep(1)
+        yield('/vnav movetarget')
+    end
+    yield('/vbm cfg aiconfig forbidactions true')
 end
 
 --if Inventory.GetFreeInventorySlots() < 100 then
