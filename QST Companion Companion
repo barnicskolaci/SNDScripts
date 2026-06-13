@@ -107,7 +107,7 @@ while Svc.ClientState.TerritoryType == 134 do
 end
 
 --'Victory in Peril' and 'Feint and Strike' stuck
-if Svc.ClientState.TerritoryType == 249 or 280 then
+if Svc.ClientState.TerritoryType == 249 or Svc.ClientState.TerritoryType == 280 then
     while Svc.Condition[56] or Svc.Condition[34] do
         yield('/vbm cfg aiconfig forbidactions false')
         sleep(1)
