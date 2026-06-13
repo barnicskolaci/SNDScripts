@@ -86,7 +86,7 @@ end
 
 sleep(5)
 --Dressed to Call: stuck on Buyback tab of shop
-while zoneID == 134 do
+while Svc.ClientState.TerritoryType == 134 do
     sleep(3)
     if IsAddonExists("Shop") then
         sleep(3)
@@ -107,7 +107,7 @@ while zoneID == 134 do
 end
 
 --'Victory in Peril' and 'Feint and Strike' stuck
-if zoneID == 249 or 280 then
+if Svc.ClientState.TerritoryType == 249 or 280 then
     while Svc.Condition[56] or Svc.Condition[34] do
         yield('/vbm cfg aiconfig forbidactions false')
         sleep(1)
