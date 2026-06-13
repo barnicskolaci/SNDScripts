@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.1
+version: 1.1.2
 triggers:
 - onterritorychange
 - onlogin
@@ -117,7 +117,7 @@ while Svc.ClientState.TerritoryType == 134 do
 end
 
 -- Solo duties 
-local zones = { [249]=true, [280]=true, [274]=true }
+local zones = { [249]=true, [280]=true, [274]=true, [307]=true }
 if zones[Svc.ClientState.TerritoryType] then
     while Svc.Condition[56] or Svc.Condition[34] do
         HardTarget()
