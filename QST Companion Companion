@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.0
+version: 1.1.1
 triggers:
 - onterritorychange
 - onlogin
@@ -125,13 +125,16 @@ if zones[Svc.ClientState.TerritoryType] then
     yield('/vbm cfg aiconfig forbidactions true')
 end
 
---'the best inventions' stuck
-if Svc.ClientState.TerritoryType == 155 then
-    while IPC.Questionable.GetCurrentQuestId() == "3869" do 
-        hardTarget()
+--Overworld hunt quests
+local owzones = { [155]=true, [137]=true }
+local quests = { ["3869"]=true, ["846"]=true }
+if owzones[Svc.ClientState.TerritoryType] then
+    while quests[IPC.Questionable.GetCurrentQuestId()] do
+        HardTarget()
     end
     yield('/vbm cfg aiconfig forbidactions true')
 end
+
 
 --if Inventory.GetFreeInventorySlots() < 100 then
 --    mode = 1
