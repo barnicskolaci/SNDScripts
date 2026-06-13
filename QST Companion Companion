@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.0.10
+version: 1.1.0
 triggers:
 - onterritorychange
 - onlogin
@@ -84,6 +84,16 @@ function sleep(seconds)
     yield('/wait ' .. tostring(seconds))
 end
 
+function HardTarget()
+    yield('/vbm cfg aiconfig forbidactions false')
+    sleep(1)
+    yield('/send TAB')
+    sleep(1)
+    yield('/send NUMPAD0')
+    sleep(1)
+    yield('/vnav movetarget')
+end
+
 sleep(5)
 --Dressed to Call: stuck on Buyback tab of shop
 while Svc.ClientState.TerritoryType == 134 do
@@ -105,35 +115,20 @@ while Svc.ClientState.TerritoryType == 134 do
          end
     end
 end
-while Svc.ClientState.TerritoryType == 134 do
-    sleep(3)
-    if IsAddonExists("Shop") then
-        sleep(3)
-        while IsAddonExists("Shop") do
-            yield('/send NUMPAD9')
-            sleep(1)
-         end
+
+-- Solo duties 
+local zones = { [249]=true, [280]=true, [274]=true }
+if zones[Svc.ClientState.TerritoryType] then
+    while Svc.Condition[56] or Svc.Condition[34] do
+        HardTarget()
     end
---Way of the Marauder unstuck from rotation failing to start
-    if IPC.Questionable.GetCurrentQuestId() == "311" then
-        local target = Entity.Target.Name
-        sleep(15)
-        if Entity.Target.Name == target then
-            yield("/rsr auto")
-            sleep(1)
-         end
-    end
+    yield('/vbm cfg aiconfig forbidactions true')
 end
+
 --'the best inventions' stuck
 if Svc.ClientState.TerritoryType == 155 then
     while IPC.Questionable.GetCurrentQuestId() == "3869" do 
-        yield('/vbm cfg aiconfig forbidactions false')
-        sleep(1)
-        yield('/send TAB')
-        sleep(1)
-        yield('/send NUMPAD0')
-        sleep(1)
-        yield('/vnav movetarget')
+        hardTarget()
     end
     yield('/vbm cfg aiconfig forbidactions true')
 end
