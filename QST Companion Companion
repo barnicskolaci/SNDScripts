@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.0.9
+version: 1.0.10
 triggers:
 - onterritorychange
 - onlogin
@@ -105,10 +105,28 @@ while Svc.ClientState.TerritoryType == 134 do
          end
     end
 end
-
---'Victory in Peril' and 'Feint and Strike' stuck
-if Svc.ClientState.TerritoryType == 249 or Svc.ClientState.TerritoryType == 280 then
-    while Svc.Condition[56] or Svc.Condition[34] do
+while Svc.ClientState.TerritoryType == 134 do
+    sleep(3)
+    if IsAddonExists("Shop") then
+        sleep(3)
+        while IsAddonExists("Shop") do
+            yield('/send NUMPAD9')
+            sleep(1)
+         end
+    end
+--Way of the Marauder unstuck from rotation failing to start
+    if IPC.Questionable.GetCurrentQuestId() == "311" then
+        local target = Entity.Target.Name
+        sleep(15)
+        if Entity.Target.Name == target then
+            yield("/rsr auto")
+            sleep(1)
+         end
+    end
+end
+--'the best inventions' stuck
+if Svc.ClientState.TerritoryType == 155 then
+    while IPC.Questionable.GetCurrentQuestId() == "3869" do 
         yield('/vbm cfg aiconfig forbidactions false')
         sleep(1)
         yield('/send TAB')
