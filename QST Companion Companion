@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.4
+version: 1.1.5
 triggers:
 - onterritorychange
 - onlogin
@@ -95,14 +95,27 @@ function HardTarget()
 end
 
 sleep(5)
+--Just desserts aethernet stuck
+if Svc.ClientState.TerritoryType == 129 then
+    while IPC.Questionable.GetCurrentQuestId() == "469" do
+        sleep(3)
+        if IsAddonExists("TelepotTown") then
+            sleep(3)
+            while IsAddonExists("TelepotTown") do
+                yield('/send ESCAPE')
+                sleep(1)
+             end
+        end
+    end
+end
 --Dressed to Call: stuck on Buyback tab of shop
 while Svc.ClientState.TerritoryType == 134 do
     sleep(3)
     if IsAddonExists("Shop") then
-        sleep(3)
+        sleep(2)
         while IsAddonExists("Shop") do
             yield('/send NUMPAD9')
-            sleep(1)
+            sleep(0.8)
          end
     end
 --Way of the Marauder unstuck from rotation failing to start
