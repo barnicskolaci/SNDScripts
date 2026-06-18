@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.5
+version: 1.1.5.2
 triggers:
 - onterritorychange
 - onlogin
@@ -96,9 +96,9 @@ end
 
 sleep(5)
 --Just desserts aethernet stuck
-if Svc.ClientState.TerritoryType == 129 then
-    while IPC.Questionable.GetCurrentQuestId() == "469" do
-        sleep(3)
+while IPC.Questionable.GetCurrentQuestId() == "469" do
+    sleep(3)
+    if Svc.ClientState.TerritoryType == 129 then
         if IsAddonExists("TelepotTown") then
             sleep(3)
             while IsAddonExists("TelepotTown") do
