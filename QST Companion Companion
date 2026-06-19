@@ -194,8 +194,7 @@ while true do
     if not Entity.Player.Name then
         break
     end
-    toon = Entity.Player.Name
-    --Just desserts aethernet stuck
+--Just desserts aethernet stuck
     if IsAddonExists("TelepotTown") then
             sleep(3)
             while IsAddonExists("TelepotTown") do
