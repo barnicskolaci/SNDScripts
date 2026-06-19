@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.8
+version: 1.1.8.2
 triggers:
 - onlogin
 
@@ -125,7 +125,7 @@ while true do
         if Entity.Target and tostring(Entity.Target.Type):match("^BattleNpc") then
             local target = Entity.Target.Name
             sleep(3)
-            if Entity.Target and target = Entity.Target.Name then and not Entity.Player.IsInCombat
+            if Entity.Target and target == Entity.Target.Name and not Entity.Player.IsInCombat then
                 yield("/rsr manual")
                 sleep(1)
             end
