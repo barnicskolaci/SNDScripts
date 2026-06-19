@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.7
+version: 1.1.8
 triggers:
 - onlogin
 
@@ -93,16 +93,17 @@ function HardTarget()
     yield('/vnav movetarget')
 end
 
-
+-- run while logged in, stop if not logged in
 while true do
     sleep(5)
-    if not Entity.Player.Name then
+    if not IsAddonExists("_DTR") then
         sleep(15)
-        if not Entity.Player.Name then
+        if not IsAddonExists("_DTR") then
             break
         end
     end
---Just desserts aethernet stuck
+
+    --aethernet stuck
     if IsAddonExists("TelepotTown") then
             sleep(3)
             while IsAddonExists("TelepotTown") do
@@ -110,9 +111,8 @@ while true do
                 sleep(1)
             end
     end
+
     --Dressed to Call: stuck on Buyback tab of shop
-    while Svc.ClientState.TerritoryType == 134 do
-        sleep(3)
         if IsAddonExists("Shop") then
             sleep(2)
             while IsAddonExists("Shop") do
@@ -120,31 +120,21 @@ while true do
                 sleep(0.8)
              end
         end
-    --Way of the Marauder unstuck from rotation failing to start
-        if IPC.Questionable.GetCurrentQuestId() == "311" then
+
+    --General Battle NPC combat failing to start
+        if Entity.Target and tostring(Entity.Target.Type):match("^BattleNpc") then
             local target = Entity.Target.Name
-            sleep(15)
-            if Entity.Target.Name == target then
+            sleep(3)
+            if Entity.Target and target = Entity.Target.Name then and not Entity.Player.IsInCombat
                 yield("/rsr auto")
                 sleep(1)
-             end
+            end
         end
-    end
     
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true }
     if zones[Svc.ClientState.TerritoryType] then
         while Svc.Condition[56] or Svc.Condition[34] do
-            HardTarget()
-        end
-        yield('/vbm cfg aiconfig forbidactions true')
-    end
-    
-    --Overworld hunt quests
-    local owzones = { [155]=true, [137]=true }
-    local quests = { ["3869"]=true, ["846"]=true }
-    if owzones[Svc.ClientState.TerritoryType] then
-        while quests[IPC.Questionable.GetCurrentQuestId()] do
             HardTarget()
         end
         yield('/vbm cfg aiconfig forbidactions true')
