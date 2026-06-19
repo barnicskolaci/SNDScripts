@@ -1,101 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.6
-triggers:
-- onlogin
-
-[[End Metadata]]
---]=====]
-local zoneID = Svc.ClientState.TerritoryType
-
-function WaitForLifestream()
-    sekonds = 0
-    yield("/echo Waiting on lifestream")
-    while IPC.Lifestream.IsBusy() do
-        --DEBUG
-        --yield("/echo Waiting on lifestream -> "..sekonds)
-        sekonds = sekonds + 1
-        yield("/wait 1")
-        if IsAddonReady("SelectYesno") then yield("/callback SelectYesno true 0") end --finally no need for configuring chars to use aetheryte tickets 
-    end
-    yield("/echo Lifestream completed")
-end
-
-function IsPlayerOccupied()
-
-    if not Player.Available then
-        return true
-    end
-
-    local occupiedFlags = {
-        25, -- Occupied
-        30, -- Occupied30
-        33, -- Occupied33
-        38, -- Occupied38
-        39, -- Occupied39
-        35, -- OccupiedInCutSceneEvent
-        31, -- OccupiedInEvent
-        32, -- OccupiedInQuestEvent
-        50, -- OccupiedSummoningBell
-        52, -- WatchingCutscene
-        78, -- WatchingCutscene78
-        45, -- BetweenAreas
-        51, -- BetweenAreas51
-        11, -- InThatPosition
-        5,  -- Crafting
-        40, -- ExecutingCraftingAction
-        41, -- PreparingToCraft
-        2,  -- Dead (Unconscious)
-        6,  -- MeldingMateria
-        7,  -- Gathering
-        65, -- CarryingItem
-        70, -- BeingMoved
-        10, -- RidingPillion
-        66, -- Mounting
-        71, -- Mounting71
-        15, -- ParticipatingInCustomMatch
-        14, -- PlayingLordOfVerminion
-        12, -- ChocoboRacing
-        13, -- PlayingMiniGame
-        18, -- Performing
-        43, -- Fishing
-        68, -- Transformed
-        67, -- UsingHousingFunctions
-    }
-
-    local c = Svc.Condition
-    for i = 1, #occupiedFlags do
-        if c[occupiedFlags[i]] then
-            return true
-        end
-    end
-
-    return false
-end
-
-function IsAddonReady(name)
-    return Addons.GetAddon(name).Ready
-end
-function IsAddonExists(name)
-    return Addons.GetAddon(name).Exists
-end
-function sleep(seconds)
-    yield('/wait ' .. tostring(seconds))
-end
-
-function HardTarget()
-    yield('/vbm cfg aiconfig forbidactions false')
-    sleep(1)
-    yield('/send TAB')
-    sleep(1)
-    yield('/send NUMPAD0')
-    sleep(1)
-    yield('/vnav movetarget')
-end
-
---[=====[
-[[SND Metadata]]
-version: 1.1.6
+version: 1.1.7
 triggers:
 - onlogin
 
@@ -192,7 +97,10 @@ end
 while true do
     sleep(5)
     if not Entity.Player.Name then
-        break
+        sleep(15)
+        if not Entity.Player.Name then
+            break
+        end
     end
 --Just desserts aethernet stuck
     if IsAddonExists("TelepotTown") then
