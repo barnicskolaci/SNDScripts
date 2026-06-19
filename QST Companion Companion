@@ -126,7 +126,7 @@ while true do
             local target = Entity.Target.Name
             sleep(3)
             if Entity.Target and target = Entity.Target.Name then and not Entity.Player.IsInCombat
-                yield("/rsr auto")
+                yield("/rsr manual")
                 sleep(1)
             end
         end
