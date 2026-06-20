@@ -1,5 +1,265 @@
 --[=====[
 [[SND Metadata]]
+version: 1.1.8.4
+triggers:
+- onlogin
+
+[[End Metadata]]
+--]=====]
+local zoneID = Svc.ClientState.TerritoryType
+
+-- Initialize position history
+
+local positionHistory = {}
+
+function CheckPosStuck()
+    local currentPos = Player.Entity.Position
+    
+    -- Handle nil position
+    if currentPos == nil then
+        positionHistory = {}
+        return false
+    end
+    
+    -- Add current position to history
+    table.insert(positionHistory, currentPos)
+    
+    -- Keep only last 3 positions
+    if #positionHistory > 3 then
+        table.remove(positionHistory, 1)
+    end
+    
+    --[[ Debug: yield position history
+    yield("/echo Position History: " .. tostring(#positionHistory) .. " entries")
+    for i, pos in ipairs(positionHistory) do
+        yield("/echo [" .. i .. "] " .. tostring(pos))
+    end]]
+    
+    -- Check if we have 3 positions and they're all the same
+    if #positionHistory == 3 then
+        local pos1 = positionHistory[1]
+        local pos2 = positionHistory[2]
+        local pos3 = positionHistory[3]
+        
+        -- Compare Vector3 objects directly
+        if pos1 == pos2 and pos2 == pos3 and not Entity.Player.IsInCombat then
+            yield("/echo Player is stationary - all 3 positions match")
+            return true
+        end
+    end
+    
+    return false
+end                        
+
+function WaitForLifestream()
+    sekonds = 0
+    yield("/echo Waiting on lifestream")
+    while IPC.Lifestream.IsBusy() do
+        --DEBUG
+        --yield("/echo Waiting on lifestream -> "..sekonds)
+        sekonds = sekonds + 1
+        yield("/wait 1")
+        if IsAddonReady("SelectYesno") then yield("/callback SelectYesno true 0") end --finally no need for configuring chars to use aetheryte tickets 
+    end
+    yield("/echo Lifestream completed")
+end
+
+function IsPlayerOccupied()
+
+    if not Player.Available then
+        return true
+    end
+
+    local occupiedFlags = {
+        25, -- Occupied
+        30, -- Occupied30
+        33, -- Occupied33
+        38, -- Occupied38
+        39, -- Occupied39
+        35, -- OccupiedInCutSceneEvent
+        31, -- OccupiedInEvent
+        32, -- OccupiedInQuestEvent
+        50, -- OccupiedSummoningBell
+        52, -- WatchingCutscene
+        78, -- WatchingCutscene78
+        45, -- BetweenAreas
+        51, -- BetweenAreas51
+        11, -- InThatPosition
+        5,  -- Crafting
+        40, -- ExecutingCraftingAction
+        41, -- PreparingToCraft
+        2,  -- Dead (Unconscious)
+        6,  -- MeldingMateria
+        7,  -- Gathering
+        65, -- CarryingItem
+        70, -- BeingMoved
+        10, -- RidingPillion
+        66, -- Mounting
+        71, -- Mounting71
+        15, -- ParticipatingInCustomMatch
+        14, -- PlayingLordOfVerminion
+        12, -- ChocoboRacing
+        13, -- PlayingMiniGame
+        18, -- Performing
+        43, -- Fishing
+        68, -- Transformed
+        67, -- UsingHousingFunctions
+    }
+
+    local c = Svc.Condition
+    for i = 1, #occupiedFlags do
+        if c[occupiedFlags[i]] then
+            return true
+        end
+    end
+
+    return false
+end
+
+function IsAddonReady(name)
+    return Addons.GetAddon(name).Ready
+end
+function IsAddonExists(name)
+    return Addons.GetAddon(name).Exists
+end
+function sleep(seconds)
+    yield('/wait ' .. tostring(seconds))
+end
+
+function HardTarget()
+    yield('/vbm cfg aiconfig forbidactions false')
+    sleep(1)
+    yield('/send TAB')
+    sleep(1)
+    yield('/send NUMPAD0')
+    sleep(1)
+    yield('/vnav movetarget')
+end
+
+while true do
+    sleep(5) --little time buffer
+
+    if not IsAddonExists("_DTR") then -- run while logged in, stop if not logged in
+        sleep(15)
+        if not IsAddonExists("_DTR") then
+            break
+        end
+    end
+
+    --general stuck checker before qst comp does a qst reload
+    if CheckPosStuck() then
+        yield('/send NUMPAD0')
+        yield("/interact")
+        --aethernet stuck
+        if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
+            while IsAddonExists("TelepotTown") do
+                yield('/send ESCAPE')
+                sleep(1)
+            end
+        end
+    --qst stuck on war quest waiting to equip soul crystal
+        if IsAddonExists("JournalAccept") then
+            sleep(1)
+            if IsAddonExists("JournalAccept") then
+                sleep(1)
+                while IsAddonExists("JournalAccept") do
+                    yield('/send ESCAPE')
+                    sleep(1)
+                    yield('/qst reload')
+                end
+            end
+        end
+    end
+
+    --Dressed to Call: stuck on Buyback tab of shop
+        if IsAddonExists("Shop") then
+            sleep(2)
+            while IsAddonExists("Shop") do
+                yield('/send NUMPAD9')
+                sleep(0.8)
+            end
+        end
+
+    --General Battle NPC combat failing to start
+        if Entity.Player.IsInCombat and Entity.Target then
+            HardTarget()
+        end
+        if Entity.Target and tostring(Entity.Target.Type):match("^BattleNpc") then
+            local target = Entity.Target.Name
+            sleep(3)
+            if Entity.Target and target == Entity.Target.Name and not Entity.Player.IsInCombat then
+                yield("/rsr manual")
+                sleep(1)
+            end
+        end
+
+    --General stuck trying to interact
+    
+    
+    -- Solo duties 
+    local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true }
+    if zones[Svc.ClientState.TerritoryType] then
+        while Svc.Condition[56] or Svc.Condition[34] do
+            HardTarget()
+        end
+        yield('/vbm cfg aiconfig forbidactions true')
+    end
+end
+    
+    --if Inventory.GetFreeInventorySlots() < 100 then
+    --    mode = 1
+    --end
+    --[[
+    if mode ~= 0 then
+            local counter = 0
+            while Svc.Targets.Target == nil or Svc.Targets.Target.Name:GetText() ~= "Summoning Bell" do
+                Dalamud.Log("[RR processing] Targeting summoning bell")
+                yield("/target Summoning Bell")
+                sleep(0.5)
+            end
+            while not IsAddonExists("RetainerList") do
+                yield("/interact")
+                sleep(1)
+            end
+        sleep(1)
+        Dalamud.Log("[RR processing] Retainer Repricer")
+        if mode == 2 then
+            yield("/rr start")
+        else
+            yield("/rr start sell")
+        end
+        while IsAddonExists("RetainerList") do
+            sleep(0.5)
+            if counter < 20 then
+                sleep(0.5)
+                if IsAddonExists("RetainerList") or not IsPlayerOccupied() then
+                    counter = counter+1
+                else
+                    counter = 0
+                end
+            else
+                yield("/snd stop all")
+                yield("/callback RetainerList true -1")
+                yield("/rr stop")
+                sleep(1)
+            end
+        end
+        counter = 0
+        while counter < 6 do
+            sleep(0.5)
+            if IsAddonExists("RetainerList") or not IsPlayerOccupied() then
+                counter = counter+1
+            else
+                counter = 0
+            end
+        end
+        if IsAddonExists("RetainerList") then
+                yield("/callback RetainerList true -1")
+        end
+    end
+    ]]
+--[=====[
+[[SND Metadata]]
 version: 1.1.8.3
 triggers:
 - onlogin
