@@ -1,18 +1,21 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.8.6
+version: 1.2.0
 triggers:
 - onlogin
 
 [[End Metadata]]
 --]=====]
-local zoneID = Svc.ClientState.TerritoryType
 
 -- Initialize position history
 
 local positionHistory = {}
 
 function CheckPosStuck()
+    if Player.Entity == nil then
+        return false
+    end
+    
     local currentPos = Player.Entity.Position
     
     -- Handle nil position
@@ -42,7 +45,7 @@ function CheckPosStuck()
         local pos3 = positionHistory[3]
         
         -- Compare Vector3 objects directly
-        if pos1 == pos2 and pos2 == pos3 and not Entity.Player.IsInCombat then
+        if pos1 == pos2 and pos2 == pos3 and Entity.Player and not Entity.Player.IsInCombat then
             yield("/echo Player is stationary - all 3 positions match")
             return true
         end
@@ -51,79 +54,43 @@ function CheckPosStuck()
     return false
 end                        
 
-function WaitForLifestream()
-    sekonds = 0
-    yield("/echo Waiting on lifestream")
-    while IPC.Lifestream.IsBusy() do
-        --DEBUG
-        --yield("/echo Waiting on lifestream -> "..sekonds)
-        sekonds = sekonds + 1
-        yield("/wait 1")
-        if IsAddonReady("SelectYesno") then yield("/callback SelectYesno true 0") end --finally no need for configuring chars to use aetheryte tickets 
-    end
-    yield("/echo Lifestream completed")
-end
-
-function IsPlayerOccupied()
-
-    if not Player.Available then
-        return true
-    end
-
-    local occupiedFlags = {
-        25, -- Occupied
-        30, -- Occupied30
-        33, -- Occupied33
-        38, -- Occupied38
-        39, -- Occupied39
-        35, -- OccupiedInCutSceneEvent
-        31, -- OccupiedInEvent
-        32, -- OccupiedInQuestEvent
-        50, -- OccupiedSummoningBell
-        52, -- WatchingCutscene
-        78, -- WatchingCutscene78
-        45, -- BetweenAreas
-        51, -- BetweenAreas51
-        11, -- InThatPosition
-        5,  -- Crafting
-        40, -- ExecutingCraftingAction
-        41, -- PreparingToCraft
-        2,  -- Dead (Unconscious)
-        6,  -- MeldingMateria
-        7,  -- Gathering
-        65, -- CarryingItem
-        70, -- BeingMoved
-        10, -- RidingPillion
-        66, -- Mounting
-        71, -- Mounting71
-        15, -- ParticipatingInCustomMatch
-        14, -- PlayingLordOfVerminion
-        12, -- ChocoboRacing
-        13, -- PlayingMiniGame
-        18, -- Performing
-        43, -- Fishing
-        68, -- Transformed
-        67, -- UsingHousingFunctions
-    }
-
-    local c = Svc.Condition
-    for i = 1, #occupiedFlags do
-        if c[occupiedFlags[i]] then
-            return true
-        end
-    end
-
-    return false
-end
-
 function IsAddonReady(name)
     return Addons.GetAddon(name).Ready
 end
+
 function IsAddonExists(name)
     return Addons.GetAddon(name).Exists
 end
+
 function sleep(seconds)
     yield('/wait ' .. tostring(seconds))
+end
+
+function AddonHandler(addonConfigs)
+    for _, config in ipairs(addonConfigs) do
+        local Addon = config.addon
+        local condition = config.condition
+        
+        -- Check custom condition if provided
+        if condition and not condition() then
+            goto skip_addon
+        end
+
+        if Entity.Player.IsCasting then
+            goto skip_addon
+        end
+        
+        while IsAddonExists(Addon) do
+            if config.command then
+                config.command()
+            else
+                yield('/send ESCAPE')
+            end
+            sleep(1)
+        end
+        
+        ::skip_addon::
+    end
 end
 
 function HardTarget()
@@ -151,60 +118,80 @@ while true do
     --general stuck checker before qst comp does a qst reload
     if CheckPosStuck() then
         --aethernet stuck
-        if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
-            while IsAddonExists("TelepotTown") do
-                yield('/send ESCAPE')
-                sleep(1)
-            end
-        end
-    --qst stuck on war quest waiting to equip soul crystal
-        if IsAddonExists("JournalAccept") then
+        AddonHandler({
+            {
+        addon = "TelepotTown",
+            },
+            {
+        addon = "SelectYesno",
+            },
+            {
+        addon = "SelectString",
+            },
+            {
+        addon = "JournalAccept",--qst stuck on war quest waiting to equip soul crystal
+        command = function()
+            yield('/send ESCAPE')
             sleep(1)
-            if IsAddonExists("JournalAccept") then
-                sleep(1)
-                while IsAddonExists("JournalAccept") do
-                    yield('/send ESCAPE')
-                    sleep(1)
-                    yield('/qst reload')
-                end
-            end
+            yield('/qst reload')
         end
-        yield('/send NUMPAD0')
+            },
+            {
+        addon = "GrandCompanySupplyList",
+            },
+            {
+        addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
+        condition = function() return Svc.ClientState.TerritoryType == 134 end,
+        command = function()
+            yield('/send NUMPAD9')
+        end
+            }
+        })
+        yield('/send NUMPAD0')--General stuck trying to interact
         if Entity.Target then
             yield("/interact")
         end
+        if Svc.ClientState.TerritoryType == 128 and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
+            yield('/target Mytesyn')
+            sleep(1)
+            if Entity.Target and Entity.Target.Name == "Mytesyn" then
+                yield('/vnav movetarget')
+                while Entity.Target and Entity.Target.DistanceTo > 5 do
+                    sleep(0.5)
+                end
+                yield("/vnav stop")
+                yield('/interact')
+                while Svc.ClientState.TerritoryType == 128 do
+                    yield('/send NUMPAD0')
+                    sleep(1)
+                end
+                sleep(1)
+            end
+        elseif IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
+            yield("/li inn")
+        end
     end
 
-    --Dressed to Call: stuck on Buyback tab of shop
-        if IsAddonExists("Shop") then
-            sleep(2)
-            while IsAddonExists("Shop") do
-                yield('/send NUMPAD9')
-                sleep(0.8)
-            end
-        end
-
     --General Battle NPC combat failing to start
-        if Entity.Player.IsInCombat and not Entity.Target then
+        if Entity.Player and Entity.Player.IsInCombat and not Entity.Target then
             HardTarget()
         end
         if Entity.Target and tostring(Entity.Target.Type):match("^BattleNpc") then
             local target = Entity.Target.Name
             sleep(3)
-            if Entity.Target and target == Entity.Target.Name and not Entity.Player.IsInCombat then
+            if Entity.Target and target == Entity.Target.Name and Entity.Player and not Entity.Player.IsInCombat then
                 yield("/rsr manual")
                 sleep(1)
             end
         end
-
-    --General stuck trying to interact
-    
     
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true }
     if zones[Svc.ClientState.TerritoryType] then
         while Svc.Condition[56] or Svc.Condition[34] do
             HardTarget()
+            yield('/rsr auto lowhp')
+            yield('/target "drowned outranger"') --feint and strike
         end
         yield('/vbm cfg aiconfig forbidactions true')
     end
