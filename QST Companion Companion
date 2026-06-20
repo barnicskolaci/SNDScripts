@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.0
+version: 1.2.1
 triggers:
 - onlogin
 
@@ -76,7 +76,7 @@ function AddonHandler(addonConfigs)
             goto skip_addon
         end
 
-        if Entity.Player.IsCasting then
+        if Entity.Player and Entity.Player.IsCasting then
             goto skip_addon
         end
         
