@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1.8.2
+version: 1.1.8.3
 triggers:
 - onlogin
 
@@ -110,6 +110,20 @@ while true do
                 yield('/send ESCAPE')
                 sleep(1)
             end
+    end
+
+    --qst stuck on war quest waiting to equip soul crystal
+    if IsAddonExists("JournalAccept") then
+        sleep(1)
+        if IsAddonExists("JournalAccept") then
+            sleep(1)
+            while IsAddonExists("TelepotTown") do
+                yield('/send ESCAPE')
+                sleep(1)
+                yield('/qst reload')
+                
+            end
+        end
     end
 
     --Dressed to Call: stuck on Buyback tab of shop
