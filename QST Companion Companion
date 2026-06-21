@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.1
+version: 1.2.2
 triggers:
 - onlogin
 
@@ -170,6 +170,7 @@ while true do
         elseif IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
             yield("/li inn")
         end
+        positionHistory = {}
     end
 
     --General Battle NPC combat failing to start
