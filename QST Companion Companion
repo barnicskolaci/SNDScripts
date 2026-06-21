@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4
+version: 1.2.4.1
 triggers:
 - onlogin
 
@@ -125,6 +125,7 @@ while true do
             yield('/send ESCAPE')
             sleep(1)
             yield('/qst reload')
+        end
             },
             {
         addon = "SelectYesno",
