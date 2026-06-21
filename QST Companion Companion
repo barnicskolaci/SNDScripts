@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.2
+version: 1.2.3
 triggers:
 - onlogin
 
@@ -124,6 +124,7 @@ while true do
             },
             {
         addon = "SelectYesno",
+        condition = function() return not IPC.Lifestream.IsBusy() end,
             },
             {
         addon = "SelectString",
