@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4.3
+version: 1.2.4.4
 triggers:
 - onlogin
 
@@ -175,6 +175,7 @@ while true do
         end
         positionHistory = {}
         yield('/qst reload')
+        yield('/qst start')
     end
 
     --General Battle NPC combat failing to start
