@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4.6
+version: 1.2.4.7
 triggers:
 - onlogin
 
@@ -198,7 +198,7 @@ while true do
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true }
     if zones[Svc.ClientState.TerritoryType] then
-        while  do
+        while Svc.Condition[56] or Svc.Condition[34] do
             HardTarget()
             yield('/rsr auto lowhp')
             yield('/target "drowned outranger"') --feint and strike
