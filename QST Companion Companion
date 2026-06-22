@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4.4
+version: 1.2.4.6
 triggers:
 - onlogin
 
@@ -169,13 +169,17 @@ while true do
                     sleep(1)
                 end
                 sleep(1)
+            else
+                if IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
+                    yield("/li inn")
+                end
             end
-        elseif IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
-            yield("/li inn")
         end
         positionHistory = {}
-        yield('/qst reload')
-        yield('/qst start')
+        if not Svc.Condition[56] and not Svc.Condition[34] then
+            yield('/qst reload')
+            yield('/qst start')
+        end
     end
 
     --General Battle NPC combat failing to start
@@ -194,7 +198,7 @@ while true do
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true }
     if zones[Svc.ClientState.TerritoryType] then
-        while Svc.Condition[56] or Svc.Condition[34] do
+        while  do
             HardTarget()
             yield('/rsr auto lowhp')
             yield('/target "drowned outranger"') --feint and strike
