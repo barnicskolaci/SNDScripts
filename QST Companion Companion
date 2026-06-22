@@ -148,6 +148,12 @@ while true do
         addon = "JournalAccept",--qst stuck on war quest waiting to equip soul crystal
             },
             {
+        addon = "JournalResult",
+            },
+            {
+        addon = "JournalRewardItem",
+            },
+            {
         addon = "GrandCompanySupplyList",
             },
             {
