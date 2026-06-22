@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4.2
+version: 1.2.4.2.2
 triggers:
 - onlogin
 
@@ -144,6 +144,9 @@ while true do
             },
             {
         addon = "GrandCompanySupplyList",
+            },
+            {
+        addon = "GrandCompanyExchange",--stuck on GC exchange
             },
             {
         addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
