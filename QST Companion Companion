@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4.1
+version: 1.2.4.2
 triggers:
 - onlogin
 
@@ -86,7 +86,7 @@ function AddonHandler(addonConfigs)
             else
                 yield('/send ESCAPE')
             end
-            sleep(1)
+            sleep(15)
         end
         
         ::skip_addon::
