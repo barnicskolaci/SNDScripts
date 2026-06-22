@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4.2.2
+version: 1.2.4.3
 triggers:
 - onlogin
 
@@ -86,7 +86,7 @@ function AddonHandler(addonConfigs)
             else
                 yield('/send ESCAPE')
             end
-            sleep(15)
+            sleep(1)
         end
         
         ::skip_addon::
@@ -124,7 +124,6 @@ while true do
         command = function()
             yield('/send ESCAPE')
             sleep(1)
-            yield('/qst reload')
         end
             },
             {
@@ -136,11 +135,6 @@ while true do
             },
             {
         addon = "JournalAccept",--qst stuck on war quest waiting to equip soul crystal
-        command = function()
-            yield('/send ESCAPE')
-            sleep(1)
-            yield('/qst reload')
-        end
             },
             {
         addon = "GrandCompanySupplyList",
@@ -180,20 +174,21 @@ while true do
             yield("/li inn")
         end
         positionHistory = {}
+        yield('/qst reload')
     end
 
     --General Battle NPC combat failing to start
-        if Entity.Player and Entity.Player.IsInCombat and not Entity.Target then
-            HardTarget()
+    if Entity.Player and Entity.Player.IsInCombat and not Entity.Target then
+        HardTarget()
+    end
+    if Entity.Target and tostring(Entity.Target.Type):match("^BattleNpc") then
+        local target = Entity.Target.Name
+        sleep(3)
+        if Entity.Target and target == Entity.Target.Name and Entity.Player and not Entity.Player.IsInCombat then
+            yield("/rsr manual")
+            sleep(1)
         end
-        if Entity.Target and tostring(Entity.Target.Type):match("^BattleNpc") then
-            local target = Entity.Target.Name
-            sleep(3)
-            if Entity.Target and target == Entity.Target.Name and Entity.Player and not Entity.Player.IsInCombat then
-                yield("/rsr manual")
-                sleep(1)
-            end
-        end
+    end
     
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true }
