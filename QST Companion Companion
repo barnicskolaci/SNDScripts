@@ -1,11 +1,22 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4.7
+version: 1.3
 triggers:
 - onlogin
 
+function_chat_filters:
+  OnChatErrorMessage:
+    channels:
+      - ErrorMessage
+    message_contains: "Unable to teleport. Another teleport is already underway."
+  
 [[End Metadata]]
 --]=====]
+
+function OnChatErrorMessage()
+    Engines.Run("/li stop")
+    Engines.Run("/return")
+end
 
 -- Initialize position history
 
