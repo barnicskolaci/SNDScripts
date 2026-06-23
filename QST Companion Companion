@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.9
+version: 1.3.10
 triggers:
 - onlogin
 
@@ -259,7 +259,7 @@ while IsAddonExists("_DTR") do
     end
     
     -- Solo duties 
-    local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true }
+    local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true }
     if zones[Svc.ClientState.TerritoryType] then
         while Svc.Condition[56] or Svc.Condition[34] do
             HardTarget()
