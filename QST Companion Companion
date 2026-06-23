@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.3
+version: 1.3.7
 triggers:
 - onlogin
 
@@ -9,14 +9,21 @@ function_chat_filters:
     channels:
     - errormessage
     message_contains: Unable to teleport. Another teleport is already underway.
+  OnChatMessage2:
+    channels:
+    - echo
+    message_contains: This ferry will become available upon reaching level 15.
 [[End Metadata]]
 --]=====]
 
 local tp_error = false
+local ferry_error = false
 function OnChatMessage()
     tp_error = true
 end
-
+function OnChatMessage2()
+    ferry_error = true
+end
 -- Initialize position history
 
 local positionHistory = {}
@@ -96,7 +103,7 @@ function AddonHandler(addonConfigs)
             else
                 yield('/send ESCAPE')
             end
-            sleep(1)
+            sleep(2)
         end
         
         ::skip_addon::
@@ -105,13 +112,17 @@ end
 
 function HardTarget()
     yield('/vbm cfg aiconfig forbidactions false')
-    sleep(1)
-    yield('/send TAB')
-    sleep(1)
+    sleep(0.1)
+    if not Svc.Targets.Target or Svc.Targets.Target:IsHostile() == false then
+      yield('/send TAB')
+      sleep(1)
+    end
     yield('/send NUMPAD0')
     sleep(1)
     if Svc.Condition[56] or Svc.Condition[34] then
+      if Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true then
         yield('/vnav movetarget')
+      end
     end
 end
 
@@ -127,7 +138,7 @@ while IsAddonExists("_DTR") do
         addon = "TelepotTown",--this might be fine, but needs testing
         command = function()
             yield('/send ESCAPE')
-            sleep(1)
+            sleep(3)
             yield('/qst start')
         end
             },
@@ -143,6 +154,9 @@ while IsAddonExists("_DTR") do
             },
             {
         addon = "JournalResult",
+        command = function()
+            yield("/click JournalResult Decline")
+        end
             },
             {
         addon = "JournalRewardItem",
@@ -171,11 +185,25 @@ while IsAddonExists("_DTR") do
                 tp_error = false
             end
         end
+        if ferry_error then
+            yield("/return")
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+            sleep(1)
+            if Entity.Player.IsCasting then
+                ferry_error = false
+            else
+              yield("/li limsa")
+              ferry_error = false
+            end
+        end
         if IPC.Questionable.GetCurrentQuestId() == "466" then
             yield('/send R')
             sleep(5)
             yield('/send R')
         end
+        
         yield('/send NUMPAD0')--General stuck trying to interact
         if Entity.Target then
             yield("/interact")
