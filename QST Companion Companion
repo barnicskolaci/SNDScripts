@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.7
+version: 1.3.8
 triggers:
 - onlogin
 
@@ -101,7 +101,8 @@ function AddonHandler(addonConfigs)
             if config.command then
                 config.command()
             else
-                yield('/send ESCAPE')
+                yield('/send DECIMAL')
+                yield('/send DECIMAL')
             end
             sleep(2)
         end
@@ -137,7 +138,8 @@ while IsAddonExists("_DTR") do
             {
         addon = "TelepotTown",--this might be fine, but needs testing
         command = function()
-            yield('/send ESCAPE')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
             sleep(3)
             yield('/qst start')
         end
