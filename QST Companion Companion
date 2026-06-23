@@ -1,21 +1,20 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.1
+version: 1.3.2
 triggers:
 - onlogin
 
 function_chat_filters:
-  OnChatErrorMessage:
+  OnChatMessage:
     channels:
-      - ErrorMessage
-    message_contains: "Unable to teleport. Another teleport is already underway."
-  
+    - errormessage
+    message_contains: Unable to teleport. Another teleport is already underway.
 [[End Metadata]]
 --]=====]
 
-function OnChatErrorMessage()
-    Engines.Run("/li stop")
-    Engines.Run("/return")
+local tp_error = false
+function OnChatMessage()
+    tp_error = true
 end
 
 -- Initialize position history
@@ -116,15 +115,9 @@ function HardTarget()
     end
 end
 
-while true do
+sleep(5)--little time buffer
+while IsAddonExists("_DTR") do
     sleep(5) --little time buffer
-
-    if not IsAddonExists("_DTR") then -- run while logged in, stop if not logged in
-        sleep(15)
-        if not IsAddonExists("_DTR") then
-            break
-        end
-    end
 
     --general stuck checker before qst comp does a qst reload
     if CheckPosStuck() then
@@ -135,11 +128,12 @@ while true do
         command = function()
             yield('/send ESCAPE')
             sleep(1)
+            yield('/qst start')
         end
             },
             {
         addon = "SelectYesno",
-        condition = function() return not IPC.Lifestream.IsBusy() end,
+        condition = tp_error == false and function() return not IPC.Lifestream.IsBusy() end,
             },
             {
         addon = "SelectString",
@@ -167,6 +161,16 @@ while true do
         end
             }
         })
+        if tp_error then
+            yield("/return")
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+            sleep(1)
+            if Entity.Player.IsCasting then
+                tp_error = false
+            end
+        end
         if IPC.Questionable.GetCurrentQuestId() == "466" then
             yield('/send R')
             sleep(5)
