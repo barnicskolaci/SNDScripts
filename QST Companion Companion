@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.8
+version: 1.3.9
 triggers:
 - onlogin
 
@@ -207,7 +207,14 @@ while IsAddonExists("_DTR") do
         end
         
         yield('/send NUMPAD0')--General stuck trying to interact
-        if Entity.Target then
+        if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
+            yield('/qst reload')
+            yield('/qst start')
+            sleep(8)
+            if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
+                yield("/interact")
+            end
+        elseif Entity.Target then
             yield("/interact")
         end
         if Svc.ClientState.TerritoryType == 128 and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
