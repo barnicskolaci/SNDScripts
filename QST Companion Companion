@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.2
+version: 1.3.3
 triggers:
 - onlogin
 
@@ -228,6 +228,7 @@ while IsAddonExists("_DTR") do
             HardTarget()
             yield('/rsr auto lowhp')
             yield('/target "drowned outranger"') --feint and strike
+            yield('/target "large boulder"') --the lominsan way
         end
         yield('/vbm cfg aiconfig forbidactions true')
     end
