@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.10.4
+version: 1.3.10.5
 triggers:
 - onlogin
 
@@ -114,17 +114,14 @@ end
 function HardTarget()
     yield('/vbm cfg aiconfig forbidactions false')
     sleep(0.1)
-    if not Svc.Targets.Target then
-      yield('/send TAB')
-      sleep(1)
-    elseif Svc.Targets.Target:IsHostile() == false then --this is like this because or evaluates both and gives an error :) might make prettier later
+    if not Svc.Targets.Target or Svc.Targets.Target:IsHostile() == false then --this is like this because or evaluates both and gives an error :) might make prettier later
       yield('/send TAB')
       sleep(1)
     end
     yield('/send NUMPAD0')
     sleep(1)
     if Svc.Condition[56] or Svc.Condition[34] then
-      if Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true or tostring(Entity.Target.Type):match("^EventObj") then
+      if Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true or Svc.Targets.Target and tostring(Entity.Target.Type):match("^EventObj") then
         yield('/vnav movetarget')
       end
     end
