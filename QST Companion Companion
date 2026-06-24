@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.10.2
+version: 1.3.10.3
 triggers:
 - onlogin
 
@@ -172,8 +172,21 @@ while IsAddonExists("_DTR") do
             {
         addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
         condition = function() return Svc.ClientState.TerritoryType == 134 end,
-        command = function()
+        command = function() --this needs a proper solution
             yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
         end
             }
         })
