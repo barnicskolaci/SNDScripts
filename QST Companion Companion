@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.12
+version: 1.3.13
 triggers:
 - onlogin
 
@@ -219,7 +219,7 @@ while IsAddonExists("_DTR") do
             yield('/send R')
         end
         while Svc.ClientState.TerritoryType == 134 and IPC.Questionable.GetCurrentQuestId() == "462" do --On to Summerford, may need coords (-3.21, 41.8, 146.1)
-            yield("/vnav moveto -24 36 160")
+            yield("/vnav moveto -52 33.3 164")
             sleep(5)
         end
         if Svc.ClientState.TerritoryType == 128 and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
