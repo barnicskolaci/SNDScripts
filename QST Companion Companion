@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.10.1
+version: 1.3.10.2
 triggers:
 - onlogin
 
@@ -11,7 +11,7 @@ function_chat_filters:
     message_contains: Unable to teleport. Another teleport is already underway.
   OnChatMessage2:
     channels:
-    - echo
+    - systemmessage
     message_contains: This ferry will become available upon reaching level 15.
 [[End Metadata]]
 --]=====]
