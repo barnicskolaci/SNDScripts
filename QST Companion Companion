@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.10
+version: 1.3.10.1
 triggers:
 - onlogin
 
@@ -121,7 +121,7 @@ function HardTarget()
     yield('/send NUMPAD0')
     sleep(1)
     if Svc.Condition[56] or Svc.Condition[34] then
-      if Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true then
+      if Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true or tostring(Entity.Target.Type):match("^EventObj") then
         yield('/vnav movetarget')
       end
     end
@@ -266,6 +266,11 @@ while IsAddonExists("_DTR") do
             yield('/rsr auto lowhp')
             yield('/target "drowned outranger"') --feint and strike
             yield('/target "large boulder"') --the lominsan way
+            yield('/target "draconian rosary"') --in the eyes of gods and men
+            if Entity.Target and Entity.Target.Name == "Wyvern" then --may need stg else
+                yield('/send TAB')
+                sleep(1)
+            end
         end
         yield('/vbm cfg aiconfig forbidactions true')
     end
