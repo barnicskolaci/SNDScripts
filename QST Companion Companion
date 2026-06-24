@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.11
+version: 1.3.12
 triggers:
 - onlogin
 
@@ -218,8 +218,9 @@ while IsAddonExists("_DTR") do
             sleep(5)
             yield('/send R')
         end
-        if Svc.ClientState.TerritoryType == 134 and IPC.Questionable.GetCurrentQuestId() == "462" then --On to Summerford, may need coords (-3.21, 41.8, 146.1)
+        while Svc.ClientState.TerritoryType == 134 and IPC.Questionable.GetCurrentQuestId() == "462" do --On to Summerford, may need coords (-3.21, 41.8, 146.1)
             yield("/vnav moveto -24 36 160")
+            sleep(5)
         end
         if Svc.ClientState.TerritoryType == 128 and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
             yield('/target Mytesyn')
@@ -247,6 +248,7 @@ while IsAddonExists("_DTR") do
             yield('/qst reload')
             yield('/qst start')
             sleep(8)
+            yield('/e [QST Comp Comp] Debug: trying to interact with aetheryte.')
             if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
                 yield("/interact")
             end
