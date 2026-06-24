@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.10.5
+version: 1.3.10.6
 triggers:
 - onlogin
 
@@ -29,7 +29,7 @@ end
 local positionHistory = {}
 
 function CheckPosStuck()
-    if Player.Entity == nil then
+    if Player.Entity == nil or Player.Available == false then
         return false
     end
     
