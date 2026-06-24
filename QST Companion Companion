@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.10.6
+version: 1.3.11
 triggers:
 - onlogin
 
@@ -218,17 +218,8 @@ while IsAddonExists("_DTR") do
             sleep(5)
             yield('/send R')
         end
-        
-        yield('/send NUMPAD0')--General stuck trying to interact
-        if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
-            yield('/qst reload')
-            yield('/qst start')
-            sleep(8)
-            if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
-                yield("/interact")
-            end
-        elseif Entity.Target then
-            yield("/interact")
+        if Svc.ClientState.TerritoryType == 134 and IPC.Questionable.GetCurrentQuestId() == "462" then --On to Summerford, may need coords (-3.21, 41.8, 146.1)
+            yield("/vnav moveto -24 36 160")
         end
         if Svc.ClientState.TerritoryType == 128 and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
             yield('/target Mytesyn')
@@ -250,6 +241,17 @@ while IsAddonExists("_DTR") do
                     yield("/li inn")
                 end
             end
+        end
+        yield('/send NUMPAD0') --General stuck trying to interact
+        if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
+            yield('/qst reload')
+            yield('/qst start')
+            sleep(8)
+            if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
+                yield("/interact")
+            end
+        elseif Entity.Target then
+            yield("/interact")
         end
         positionHistory = {}
         if not Svc.Condition[56] and not Svc.Condition[34] then
