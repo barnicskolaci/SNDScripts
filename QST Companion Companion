@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5
+version: 1.5.1
 triggers:
 - onlogin
 
