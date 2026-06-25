@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4.0
+version: 1.4.1
 triggers:
 - onlogin
 
@@ -18,6 +18,7 @@ function_chat_filters:
 
 local tp_error = false
 local ferry_error = false
+local interactioncount = 0
 function OnChatMessage()
     tp_error = true
 end
@@ -104,7 +105,7 @@ function AddonHandler(addonConfigs)
                 yield('/send DECIMAL')
                 yield('/send DECIMAL')
             end
-            sleep(2)
+            sleep(5)
         end
         
         ::skip_addon::
@@ -247,32 +248,38 @@ while IsAddonExists("_DTR") do
         if not Entity.Target then
             yield('/send NUMPAD0') --General stuck trying to interact, idk if this is making aethernet stuck loops
         end
-        AddonHandler({
-            {
-        addon = "TelepotTown",--this might be fine, but needs testing
-        command = function()
-            yield('/send DECIMAL')
-            yield('/send DECIMAL')
-            sleep(3)
-            yield('/qst start')
-        end
-            }
-        })
         if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
             yield('/qst reload')
+            sleep(1)
             yield('/qst start')
-            sleep(8)
+            sleep(10)
             yield('/e [QST Comp Comp] Debug: trying to interact with aetheryte.')
             if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
                 yield("/interact")
             end
+        elseif Entity.Target and Entity.Target.Name == targetname then
+            interactioncount = interactioncount + 1
+            yield('/e [QST Comp Comp] Debug: trying to interact with ' .. targetName .. ' ' .. interactioncount+1 .. ' times.')
+            yield("/interact")
+            if interactioncount > 5 then
+                yield('/e [QST Comp Comp] Debug: interaction count exceeded 5, letting it go.')
+                interactioncount = 0
+                sleep(70)
+            end
         elseif Entity.Target then
+            local targetName = Entity.Target.Name
+            yield('/e [QST Comp Comp] Debug: trying to interact with ' .. targetName .. '.')
             yield("/interact")
         end
         positionHistory = {}
         if not Svc.Condition[56] and not Svc.Condition[34] then
             yield('/qst reload')
             yield('/qst start')
+        end
+        while Player.Available == false do
+            sleep(1)
+            yield('/send DECIMAL')
+            yield('/send ESCAPE')
         end
     end
 
@@ -288,7 +295,19 @@ while IsAddonExists("_DTR") do
             sleep(1)
         end
     end
-    
+
+    AddonHandler({
+        {
+    addon = "TelepotTown",--this might be fine, but needs testing
+    command = function()
+        yield('/send DECIMAL')
+        yield('/send DECIMAL')
+        sleep(3)
+        yield('/qst start')
+    end
+        }
+    })
+
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true }
     if zones[Svc.ClientState.TerritoryType] then
