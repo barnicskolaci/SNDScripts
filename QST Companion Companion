@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4.1
+version: 1.5
 triggers:
 - onlogin
 
@@ -257,7 +257,7 @@ while IsAddonExists("_DTR") do
             if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
                 yield("/interact")
             end
-        elseif Entity.Target and Entity.Target.Name == targetname then
+        elseif Entity.Target and targetname and Entity.Target.Name == targetname then
             interactioncount = interactioncount + 1
             yield('/e [QST Comp Comp] Debug: trying to interact with ' .. targetName .. ' ' .. interactioncount+1 .. ' times.')
             yield("/interact")
@@ -265,6 +265,7 @@ while IsAddonExists("_DTR") do
                 yield('/e [QST Comp Comp] Debug: interaction count exceeded 5, letting it go.')
                 interactioncount = 0
                 sleep(70)
+                targetname = nil
             end
         elseif Entity.Target then
             local targetName = Entity.Target.Name
