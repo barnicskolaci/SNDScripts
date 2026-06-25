@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.13
+version: 1.4.0
 triggers:
 - onlogin
 
@@ -129,9 +129,30 @@ end
 
 sleep(5)--little time buffer
 while IsAddonExists("_DTR") do
-    sleep(5) --little time buffer
-
-    --general stuck checker before qst comp does a qst reload
+    sleep(10) --little time buffer
+    AddonHandler({ -- this is separate to avoid qst timing out
+            {
+        addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
+        condition = function() return Svc.ClientState.TerritoryType == 134 end,
+        command = function() --this needs a proper solution
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send NUMPAD9')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
+        end
+            }
+        })
     if CheckPosStuck() then
         --aethernet stuck
         AddonHandler({
@@ -168,28 +189,8 @@ while IsAddonExists("_DTR") do
             },
             {
         addon = "GrandCompanyExchange",--stuck on GC exchange
-            },
-            {
-        addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
-        condition = function() return Svc.ClientState.TerritoryType == 134 end,
-        command = function() --this needs a proper solution
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send NUMPAD9')
-            yield('/send DECIMAL')
-            yield('/send DECIMAL')
-            yield('/send DECIMAL')
-        end
             }
-        })
+          })
         if tp_error then
             yield("/return")
             if Addons.GetAddon("SelectYesno").Ready then
@@ -243,7 +244,20 @@ while IsAddonExists("_DTR") do
                 end
             end
         end
-        yield('/send NUMPAD0') --General stuck trying to interact
+        if not Entity.Target then
+            yield('/send NUMPAD0') --General stuck trying to interact, idk if this is making aethernet stuck loops
+        end
+        AddonHandler({
+            {
+        addon = "TelepotTown",--this might be fine, but needs testing
+        command = function()
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
+            sleep(3)
+            yield('/qst start')
+        end
+            }
+        })
         if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
             yield('/qst reload')
             yield('/qst start')
