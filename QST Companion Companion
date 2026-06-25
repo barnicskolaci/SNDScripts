@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5
+version: 1.5.0.1
 triggers:
 - onlogin
 
@@ -129,6 +129,7 @@ function HardTarget()
 end
 
 sleep(5)--little time buffer
+yield("/dps wloadall") --this is for Dhog Potato System window placement
 while IsAddonExists("_DTR") do
     sleep(10) --little time buffer
     AddonHandler({ -- this is separate to avoid qst timing out
