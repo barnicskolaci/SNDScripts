@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.3.3
+version: 1.5.4
 triggers:
 - onlogin
 
@@ -38,6 +38,14 @@ end
 function OnChatMessage2()
     ferry_error = true
 end
+
+function FastCloseCheck(a, b, tol)
+    tol = tol or 0.5
+    return math.abs(a.X-b.X) < tol
+       and math.abs(a.Y-b.Y) < tol
+       and math.abs(a.Z-b.Z) < tol
+end
+
 -- Initialize position history
 
 local positionHistory = {}
@@ -76,8 +84,8 @@ function CheckPosStuck()
         local pos3 = positionHistory[3]
         
         -- Compare Vector3 objects directly
-        if pos1 == pos2 and pos2 == pos3 and Entity.Player and not Entity.Player.IsInCombat then
-            yield("/echo Player is stationary - all 3 positions match")
+        if FastCloseCheck(pos1, pos2) and FastCloseCheck(pos2, pos3) and Entity.Player and not Entity.Player.IsInCombat then
+            yield("/echo Player is not moving anywhere.")
             return true
         end
     end
@@ -231,9 +239,8 @@ while IsAddonExists("_DTR") do
           })
         if tp_error then
             yield("/return")
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
+            yield('/waitaddon "SelectYesno"')
+            yield("/click SelectYesno Yes")
             sleep(1)
             if Entity.Player.IsCasting then
                 tp_error = false
@@ -241,9 +248,8 @@ while IsAddonExists("_DTR") do
         end
         if ferry_error then
             yield("/return")
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
+            yield('/waitaddon "SelectYesno"')
+            yield("/click SelectYesno Yes")
             sleep(1)
             if Entity.Player.IsCasting then
                 ferry_error = false
@@ -332,6 +338,9 @@ while IsAddonExists("_DTR") do
             yield("/click SelectIconString Entry1")
             yield('/waitaddon "SelectYesno"')
             yield("/click SelectYesno Yes")
+        elseif Svc.ClientState.TerritoryType == 129 and IPC.Questionable.GetCurrentQuestId() == "546" then
+            yield("/return")
+            --!!more steps to interact with Baderon
         end
         while Player.Available == false do
             sleep(1)
