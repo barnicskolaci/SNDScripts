@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6
+version: 1.6.1
 triggers:
 - onlogin
 
@@ -141,15 +141,18 @@ function AddonHandler(addonConfigs)
             goto skip_addon
         end
         
-        if debug then
-            yield("/echo [QST Comp Comp] Debug: Handling addon: " .. Addon)
-        end
         while IsAddonExists(Addon) do
             if config.command then
                 config.command()
+                if debug then
+                    yield("/echo [QST Comp Comp] Debug: Handling addon: " .. Addon)
+                end
             else
                 yield('/send ESCAPE')
                 yield('/send DECIMAL')
+                if debug then
+                    yield("/echo [QST Comp Comp] Debug: Handling addon: " .. Addon)
+                end
             end
             sleep(5)
         end
@@ -389,12 +392,11 @@ while IsAddonExists("_DTR") do
                 yield("/interact")
             end
         end
-        if not Svc.Condition[56] and not Svc.Condition[34] then
+        if not Svc.Condition[26] then
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
             end
             yield('/qst reload')
-            yield('/qst start')
         end
         while Player.Available == false do
             if debug then
