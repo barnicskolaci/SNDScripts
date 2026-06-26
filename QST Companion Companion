@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.2
+version: 1.5.3
 triggers:
 - onlogin
 
@@ -224,7 +224,13 @@ while IsAddonExists("_DTR") do
             },
             {
         addon = "GrandCompanyExchange",--stuck on GC exchange
-            }
+            },
+            {
+        addon = "BeginnerChatInviteDialog",--Novice Network
+        command = function()
+            yield('/callback "BeginnerChatInviteDialog" 1 1')
+        end
+        }
           })
         if tp_error then
             yield("/return")
@@ -321,6 +327,12 @@ while IsAddonExists("_DTR") do
                 sleep(0.1)
             end
             yield("/click SelectYesno Yes")
+        elseif Svc.ClientState.TerritoryType == 128 and Entity.Target and Entity.Target.Name == "L'Nophlo" then
+            MoveAndInteract("Blanmhas")
+            while not Addons.GetAddon("SelectYesno").Ready do
+                sleep(0.1)
+            end
+            yield("/click SelectYesno Yes")
         end
         while Player.Available == false do
             sleep(1)
@@ -353,7 +365,7 @@ while IsAddonExists("_DTR") do
         yield('/send DECIMAL')
         yield('/send DECIMAL')
         sleep(3)
-        yield('/qst start')
+        --yield('/qst start') not sure if needed
     end
         }
     })
@@ -373,5 +385,16 @@ while IsAddonExists("_DTR") do
             end
         end
         yield('/vbm cfg aiconfig forbidactions true')
+    end
+    if IPC.Questionable.GetCurrentQuestId() == "693" and IsInBox(0, 0, 0) then --!!update coords, leve handler
+        if not Addons.GetAddon("Journal").Ready then
+            yield("/send J")
+        end
+        yield('/waitaddon "Journal"')
+        yield("/click JournalDetail Initiate")
+        yield('/waitaddon "SelectYesno"')
+        yield("/click SelectYesno Yes")
+        yield('/waitaddon "SelectYesno"')
+        yield("/click SelectYesno Yes")
     end
 end
