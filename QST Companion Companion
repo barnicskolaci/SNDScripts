@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.3.2
+version: 1.5.3.3
 triggers:
 - onlogin
 
@@ -192,7 +192,6 @@ while IsAddonExists("_DTR") do
         addon = "TelepotTown",--this might be fine, but needs testing
         command = function()
                 yield("/send ESCAPE") --needs attention
-            end
         end
             },
             {
