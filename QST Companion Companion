@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.3
+version: 1.5.3.1
 triggers:
 - onlogin
 
@@ -102,7 +102,7 @@ function MoveAndInteract(target)
     sleep(1)
     if Entity.Target and Entity.Target.Name == target then
         yield('/vnav movetarget')
-        while Entity.Target and Entity.Target.DistanceTo > 5 do
+        while Entity.Target and Entity.Target.DistanceTo > 3 do
             sleep(0.5)
         end
         yield("/vnav stop")
@@ -264,7 +264,7 @@ while IsAddonExists("_DTR") do
             yield("/vnav moveto -52 33.3 164")
             sleep(5)
         end
-        if Svc.ClientState.TerritoryType == 128 and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
+        if Svc.ClientState.TerritoryType == 128 or 129 and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
             yield('/target Mytesyn') --this could be reworked into moveandinteract()
             sleep(1)
             if Entity.Target and Entity.Target.Name == "Mytesyn" then
@@ -323,16 +323,15 @@ while IsAddonExists("_DTR") do
         if Svc.ClientState.TerritoryType == 132 and IsInBox(20.5, -19, 111.3) then
             yield('/qst stop')
             MoveAndInteract("Lionnellais")
-            while not Addons.GetAddon("SelectYesno").Ready do
-                sleep(0.1)
-            end
+            yield('/waitaddon "SelectYesno"')
             yield("/click SelectYesno Yes")
-        elseif Svc.ClientState.TerritoryType == 128 and Entity.Target and Entity.Target.Name == "L'Nophlo" then
+        --[[elseif Svc.ClientState.TerritoryType == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then
+            yield('/qst stop')
             MoveAndInteract("Blanmhas")
-            while not Addons.GetAddon("SelectYesno").Ready do
-                sleep(0.1)
-            end
-            yield("/click SelectYesno Yes")
+            yield('/waitaddon "SelectString"')
+            yield("/click SelectIconString Entry1")
+            yield('/waitaddon "SelectYesno"')
+            yield("/click SelectYesno Yes")]]
         end
         while Player.Available == false do
             sleep(1)
