@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.4
+version: 1.5.5
 triggers:
 - onlogin
 
@@ -19,25 +19,8 @@ function_chat_filters:
 local tp_error = false
 local ferry_error = false
 local interactioncount = 0
+local targetName = nil
 
--- Returns true if Entity.Player.Position is within delta units of the target coordinates
-function IsInBox(x, y, z, delta)
-    if Entity.Player == nil or Entity.Player.Position == nil then
-        return false
-    end
-
-    local p = Entity.Player.Position
-    delta = delta or 1
-    return p.X > x - delta and p.X < x + delta
-       and p.Y > y - delta and p.Y < y + delta
-       and p.Z > z - delta and p.Z < z + delta
-end
-function OnChatMessage()
-    tp_error = true
-end
-function OnChatMessage2()
-    ferry_error = true
-end
 
 function FastCloseCheck(a, b, tol)
     tol = tol or 0.5
@@ -45,6 +28,24 @@ function FastCloseCheck(a, b, tol)
        and math.abs(a.Y-b.Y) < tol
        and math.abs(a.Z-b.Z) < tol
 end
+-- Returns true if Entity.Player.Position is within delta units of the target coordinates
+function IsPlayerCloseTo(x, y, z, delta)
+    if Entity.Player == nil or Entity.Player.Position == nil then
+        return false
+    end
+
+    local p = Entity.Player.Position --eg 1,2,3 vs 1.1,2.2,3.3
+    delta = delta or 0.5
+    return FastCloseCheck(p, Vector3.New(x, y, z), delta)
+end
+
+function OnChatMessage()
+    tp_error = true
+end
+function OnChatMessage2()
+    ferry_error = true
+end
+
 
 -- Initialize position history
 
@@ -136,7 +137,7 @@ function AddonHandler(addonConfigs)
             if config.command then
                 config.command()
             else
-                yield('/send DECIMAL')
+                yield('/send ESCAPE')
                 yield('/send DECIMAL')
             end
             sleep(5)
@@ -166,8 +167,8 @@ end
 
 --[[Script start]]
 
-sleep(5)--little time buffer
 yield("/dps wloadall") --this is for Dhog Potato System window placement
+sleep(5)--little time buffer
 while IsAddonExists("_DTR") do
     sleep(6) --little time buffer
     AddonHandler({ -- this is separate to avoid qst timing out
@@ -237,6 +238,7 @@ while IsAddonExists("_DTR") do
         end
         }
           })
+
         if tp_error then
             yield("/return")
             yield('/waitaddon "SelectYesno"')
@@ -246,6 +248,7 @@ while IsAddonExists("_DTR") do
                 tp_error = false
             end
         end
+
         if ferry_error then
             yield("/return")
             yield('/waitaddon "SelectYesno"')
@@ -258,15 +261,15 @@ while IsAddonExists("_DTR") do
               ferry_error = false
             end
         end
+
         if IPC.Questionable.GetCurrentQuestId() == "466" then
             yield('/send R')
             sleep(5)
             yield('/send R')
-        end
-        if IPC.Questionable.GetCurrentQuestId() == "889" then
+        elseif IPC.Questionable.GetCurrentQuestId() == "889" then
             MoveAndInteract("Stolen Wares")
         end
-        while Svc.ClientState.TerritoryType == 134 and IPC.Questionable.GetCurrentQuestId() == "462" or "403" do --On to Summerford, may need coords (-3.21, 41.8, 146.1)
+        while Svc.ClientState.TerritoryType == 134 and IPC.Questionable.GetCurrentQuestId() == "462" or "403" do --On to Summerford/relightting the torch(?)
             yield("/vnav moveto -52 33.3 164")
             sleep(5)
         end
@@ -291,10 +294,27 @@ while IsAddonExists("_DTR") do
                 end
             end
         end
+
+        if Svc.ClientState.TerritoryType == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then
+            yield('/qst stop')
+            MoveAndInteract("Lionnellais")
+            yield('/waitaddon "SelectYesno"')
+            yield("/click SelectYesno Yes")
+        elseif Svc.ClientState.TerritoryType == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then
+            yield('/qst stop')
+            MoveAndInteract("Blanmhas")
+            yield('/waitaddon "SelectString"')
+            yield("/click SelectIconString Entry1")
+            yield('/waitaddon "SelectYesno"')
+            yield("/click SelectYesno Yes")
+        elseif Svc.ClientState.TerritoryType == 129 and IPC.Questionable.GetCurrentQuestId() == "546" then
+            --yield("/return")
+            --!!more steps to interact with Baderon
+        end
+
         if not Entity.Target and not IsAddonReady("TelepotTown") then
             yield('/send NUMPAD0') --General stuck trying to interact, idk if this is making aethernet stuck loops
-        end
-        if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
+        elseif Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
             yield('/qst reload')
             sleep(1)
             yield('/qst start')
@@ -314,7 +334,7 @@ while IsAddonExists("_DTR") do
                 targetname = nil
             end
         elseif Entity.Target then
-            local targetName = Entity.Target.Name
+            targetName = Entity.Target.Name
             if targetName == "Yellow Serpent Flyer" then
                 -- Blacklist
             else
@@ -325,22 +345,6 @@ while IsAddonExists("_DTR") do
         if not Svc.Condition[56] and not Svc.Condition[34] then
             yield('/qst reload')
             yield('/qst start')
-        end
-        if Svc.ClientState.TerritoryType == 132 and IsInBox(20.5, -19, 111.3) then
-            yield('/qst stop')
-            MoveAndInteract("Lionnellais")
-            yield('/waitaddon "SelectYesno"')
-            yield("/click SelectYesno Yes")
-        elseif Svc.ClientState.TerritoryType == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then
-            yield('/qst stop')
-            MoveAndInteract("Blanmhas")
-            yield('/waitaddon "SelectString"')
-            yield("/click SelectIconString Entry1")
-            yield('/waitaddon "SelectYesno"')
-            yield("/click SelectYesno Yes")
-        elseif Svc.ClientState.TerritoryType == 129 and IPC.Questionable.GetCurrentQuestId() == "546" then
-            yield("/return")
-            --!!more steps to interact with Baderon
         end
         while Player.Available == false do
             sleep(1)
@@ -394,7 +398,7 @@ while IsAddonExists("_DTR") do
         end
         yield('/vbm cfg aiconfig forbidactions true')
     end
-    if IPC.Questionable.GetCurrentQuestId() == "693" and IsInBox(0, 0, 0) then --!!update coords, leve handler
+    if IPC.Questionable.GetCurrentQuestId() == "693" and IsPlayerCloseTo(0, 0, 0) then --!!update coords, leve handler
         if not Addons.GetAddon("Journal").Ready then
             yield("/send J")
         end
