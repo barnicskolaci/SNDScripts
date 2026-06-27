@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.4.2
+version: 1.6.4.3
 triggers:
 - onlogin
 - onterritorychange
@@ -373,7 +373,7 @@ while IsAddonExists("_DTR") do
             while not Player.IsCasting do
                 yield('/send NUMPAD0')
                 sleep(0.01)
-                if Entity.Target and Entity.Target.Type ~= "Destination"
+                if Entity.Target and Entity.Target.Type ~= "Destination" then
                     break
                 end
             end
