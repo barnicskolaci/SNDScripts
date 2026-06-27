@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.3.1
+version: 1.6.3.2
 triggers:
 - onlogin
 - onterritorychange
@@ -353,7 +353,8 @@ while IsAddonExists("_DTR") do
             yield("/click SelectYesno Yes")
         elseif IsPlayerCloseTo(-7.1, 40, -16) then
             yield('/qst stop')
-            IPC.vnavmesh.PathfindAndMoveTo(Vector3(0, 40, 9), false)
+            IPC.vnavmesh.PathfindAndMoveTo(Vector3(13.7, 40, 70), false)
+            sleep(10)
         elseif Svc.ClientState.TerritoryType == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then
             yield('/qst stop')
             if debug then
