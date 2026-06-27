@@ -371,8 +371,11 @@ while IsAddonExists("_DTR") do
         elseif Svc.ClientState.TerritoryType == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) then
             yield("/vnav stop")
             while not Player.IsCasting do
-               yield('/send NUMPAD0')
-               sleep(0.01)
+                yield('/send NUMPAD0')
+                sleep(0.01)
+                if Entity.Target and Entity.Target.Type ~= "Destination"
+                    break
+                end
             end
         end
 
