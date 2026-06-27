@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.2.1
+version: 1.6.2.2
 triggers:
 - onlogin
 - onterritorychange
@@ -35,13 +35,13 @@ function IsPlayerCloseTo(x, y, z, delta)
     if Entity.Player == nil or Entity.Player.Position == nil then
         return false
     end
-
-    local p = Entity.Player.Position --eg 1,2,3 vs 1.1,2.2,3.3
+    local p = Entity.Player.Position
     delta = delta or 0.5
+    local result = FastCloseCheck(p, {X=x, Y=y, Z=z}, delta)
     if debug then
-        yield("/echo [QST Comp Comp] Debug: Checking if player is close to (" .. x .. ", " .. y .. ", " .. z .. ") with delta " .. delta .. ") - Result: " .. tostring(FastCloseCheck(p, Vector3.New(x, y, z), delta)))
+        yield("/echo [QST] Debug: Checking if player is close to (" .. x .. ", " .. y .. ", " .. z .. ") with delta " .. delta .. " - Result: " .. tostring(result))
     end
-    return FastCloseCheck(p, Vector3.New(x, y, z), delta)
+    return result
 end
 
 function OnChatMessage()
@@ -456,7 +456,7 @@ while IsAddonExists("_DTR") do
     })
 
     -- Solo duties 
-    local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true } --castrum centri 305?
+    local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true, [263]=true } --castrum centri 305?
     if zones[Svc.ClientState.TerritoryType] then
         while Svc.Condition[56] or Svc.Condition[34] do
             HardTarget()
