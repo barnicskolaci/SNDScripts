@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.1
+version: 1.6.1.2
 triggers:
 - onlogin
 
@@ -392,11 +392,12 @@ while IsAddonExists("_DTR") do
                 yield("/interact")
             end
         end
-        if not Svc.Condition[26] then
+        if not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --duties MUST be excluded, qst reload reloads path
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
             end
             yield('/qst reload')
+            yield('/qst start')
         end
         while Player.Available == false do
             if debug then
@@ -432,7 +433,7 @@ while IsAddonExists("_DTR") do
         {
     addon = "TelepotTown",--this might be fine, but needs testing
     command = function()
-        yield('/send DECIMAL')
+        yield('/send ESCAPE')
         yield('/send DECIMAL')
         sleep(3)
         --yield('/qst start') not sure if needed
