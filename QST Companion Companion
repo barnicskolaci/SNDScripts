@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.2
+version: 1.6.2.1
 triggers:
 - onlogin
 - onterritorychange
@@ -264,14 +264,15 @@ while IsAddonExists("_DTR") do
             },
             {
         addon = "GrandCompanyExchange",--stuck on GC exchange
-            --[[},
+            }
+        }--[[,
             {
         addon = "BeginnerChatInviteDialog",--Novice Network
         command = function()
             yield('/callback "BeginnerChatInviteDialog" 1 1')
         end
-        }]]
-          })
+        }
+          }]])
 
         if tp_error then
             yield("/return")
