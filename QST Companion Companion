@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.4
+version: 1.6.4.1
 triggers:
 - onlogin
 - onterritorychange
@@ -22,7 +22,7 @@ local tp_error = false
 local ferry_error = false
 local interactioncount = 0
 local targetName = nil
-local debug = true
+local debug = false
 local stoplevel = 47
 
 function FastCloseCheck(a, b, tol)
