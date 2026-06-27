@@ -1,8 +1,9 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.1.2
+version: 1.6.2
 triggers:
 - onlogin
+- onterritorychange
 
 function_chat_filters:
   OnChatMessage:
@@ -21,6 +22,7 @@ local ferry_error = false
 local interactioncount = 0
 local targetName = nil
 local debug = true
+local stoplevel = 47
 
 function FastCloseCheck(a, b, tol)
     tol = tol or 0.5
@@ -192,6 +194,17 @@ yield("/dps wloadall") --this is for Dhog Potato System window placement
 sleep(5)--little time buffer
 while IsAddonExists("_DTR") do
     sleep(6) --little time buffer
+    --[[if Player.Job.Level and Player.Job.Level >= 47 then
+        while not Player.Available do
+            yield("/send ESCAPE")
+            sleep(0.5)
+        end
+        yield("/qst stop")
+        yield("/wait 1")
+        yield("/logout")
+        yield('/waitaddon "SelectYesno"')
+        yield("/click SelectYesno Yes")
+    end]]
     AddonHandler({ -- this is separate to avoid qst timing out
             {
         addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
@@ -251,13 +264,13 @@ while IsAddonExists("_DTR") do
             },
             {
         addon = "GrandCompanyExchange",--stuck on GC exchange
-            },
+            --[[},
             {
         addon = "BeginnerChatInviteDialog",--Novice Network
         command = function()
             yield('/callback "BeginnerChatInviteDialog" 1 1')
         end
-        }
+        }]]
           })
 
         if tp_error then
@@ -442,7 +455,7 @@ while IsAddonExists("_DTR") do
     })
 
     -- Solo duties 
-    local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true }
+    local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true } --castrum centri 305?
     if zones[Svc.ClientState.TerritoryType] then
         while Svc.Condition[56] or Svc.Condition[34] do
             HardTarget()
