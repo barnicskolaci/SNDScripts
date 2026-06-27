@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.2.2
+version: 1.6.3
 triggers:
 - onlogin
 - onterritorychange
@@ -17,6 +17,7 @@ function_chat_filters:
 [[End Metadata]]
 --]=====]
 
+import("System.Numerics")
 local tp_error = false
 local ferry_error = false
 local interactioncount = 0
@@ -471,10 +472,18 @@ while IsAddonExists("_DTR") do
         end
         yield('/vbm cfg aiconfig forbidactions true')
     end
-    if IPC.Questionable.GetCurrentQuestId() == "693" and IsPlayerCloseTo(0, 0, 0) then --!!update coords, leve handler
+    --[[if IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") and Entity.Target and Entity.Target.Name  == "Swygskyf" then --!!update coords, leve handler
         if debug then
             yield("/echo [QST Comp Comp] Debug: Attempting leve.")
         end
+        yield('/waitaddon "GuildLeve"')
+        if Addons.GetAddon("Journal").Ready then
+            yield("/click JournalDetail AcceptMap")
+        end
+        IPC.vnavmesh.PathfindAndMoveTo(Vector3(613, 8.4, 477), false)
+        while IPC.vnavmesh.IsRunning do
+            sleep(1)
+        end        
         if not Addons.GetAddon("Journal").Ready then
             yield("/send J")
         end
@@ -482,7 +491,15 @@ while IsAddonExists("_DTR") do
         yield("/click JournalDetail Initiate")
         yield('/waitaddon "SelectYesno"')
         yield("/click SelectYesno Yes")
+        sleep(1)
+        yield("/target crab")
+        yield("/rsr manual")
+        sleep(1)
+        while Entity.Player and Entity.Player.IsInCombat do
+            sleep(1)
+        end
         yield('/waitaddon "SelectYesno"')
         yield("/click SelectYesno Yes")
-    end
+        MoveAndInteract("Swygskyf")
+    end]]
 end
