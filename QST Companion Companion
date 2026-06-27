@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.4.1
+version: 1.6.4.2
 triggers:
 - onlogin
 - onterritorychange
@@ -370,7 +370,10 @@ while IsAddonExists("_DTR") do
             --!!more steps to interact with Baderon
         elseif Svc.ClientState.TerritoryType == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) then
             yield("/vnav stop")
-            MoveAndInteract("Destination")
+            while not Player.IsCasting do
+               yield('/send NUMPAD0')
+               sleep(0.01)
+            end
         end
 
         if not Entity.Target and not IsAddonReady("TelepotTown") then
