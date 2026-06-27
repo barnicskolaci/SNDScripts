@@ -368,7 +368,7 @@ while IsAddonExists("_DTR") do
         elseif Svc.ClientState.TerritoryType == 129 and IPC.Questionable.GetCurrentQuestId() == "546" then
             --yield("/return")
             --!!more steps to interact with Baderon
-        elseif IPC.Questionable.GetCurrentQuestID() == "756" and IsPlayerCloseTo(314.7, 23.3, -256.23) then
+        elseif Svc.ClientState.TerritoryType == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) then
             yield("/vnav stop")
             MoveAndInteract("Destination")
         end
