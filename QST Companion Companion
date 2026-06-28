@@ -466,6 +466,7 @@ while IsAddonExists("_DTR") do
         while Svc.Condition[56] or Svc.Condition[34] do
             HardTarget()
             yield('/rsr auto lowhp')
+            yield('/qst start')
             yield('/target "drowned outranger"') --feint and strike
             yield('/target "large boulder"') --the lominsan way
             yield('/target "draconian rosary"') --in the eyes of gods and men
