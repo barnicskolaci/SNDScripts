@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.6
+version: 1.6.6.1
 triggers:
 - onlogin
 - onterritorychange
@@ -167,6 +167,7 @@ end
 function HardTarget()
     yield('/vbm cfg aiconfig forbidactions false')
     sleep(0.1)
+    yield('/vbm ai on')
     if debug then
         yield("/echo [QST Comp Comp] Debug: HardTarget function called.")
     end
