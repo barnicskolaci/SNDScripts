@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.7.2
+version: 1.6.7.3
 triggers:
 - onlogin
 - onterritorychange
@@ -359,14 +359,14 @@ while IsAddonExists("_DTR") do
         elseif Svc.ClientState.TerritoryType == 129 and IPC.Questionable.GetCurrentQuestId() == "546" then
             --yield("/return")
             --!!more steps to interact with Baderon
-        elseif Svc.ClientState.TerritoryType == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) then
+        elseif Svc.ClientState.TerritoryType == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) and Entity.Target and Entity.Target.Name == "Destination" then
             yield("/vnav stop")
-            while not Player.IsCasting do
+            yield("/qst stop")
+            local counter_destination_interact = 0
+            while not Player.IsCasting and not IPC.Questionable.IsRunning() and counter_destination_interact < 10 do
                 yield('/send NUMPAD0')
-                sleep(0.01)
-                if Entity.Target and Entity.Target.Type ~= "Destination" then
-                    break
-                end
+                sleep(1)
+                counter_destination_interact = counter_destination_interact + 1
             end
         elseif Svc.ClientState.TerritoryType == 156 and IPC.Questionable.GetCurrentQuestId() == "1005" and IsPlayerCloseTo(-65.19908, 2.9204268, -634.66235) then
             yield("/qst stop")
