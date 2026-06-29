@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.7.1
+version: 1.6.7.2
 triggers:
 - onlogin
 - onterritorychange
@@ -290,7 +290,7 @@ while IsAddonExists("_DTR") do
             end
         end]]
 
-        if IPC.Questionable.GetCurrentQuestId() == ("466" or "621") then
+        if IPC.Questionable.GetCurrentQuestId() == ("466" or "621" or "618") then -- getting stuck under darm dome and enemies not spawning
             yield('/send R')
             sleep(5)
             yield('/send R')
