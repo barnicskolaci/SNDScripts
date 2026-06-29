@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.6.1
+version: 1.6.6.2
 triggers:
 - onlogin
 - onterritorychange
@@ -196,19 +196,22 @@ yield("/dps wloadall") --this is for Dhog Potato System window placement
 sleep(5)--little time buffer
 while IsAddonExists("_DTR") do
     sleep(6) --little time buffer
-    if Player.Job.Level and Player.Job.Level >= 47 then
-        while not Player.Available do
-            yield("/send ESCAPE")
-            sleep(0.5)
-        end
-        yield("/qst stop")
-        yield("/wait 1")
-        yield("/logout")
-        yield('/waitaddon "SelectYesno"')
-        yield("/click SelectYesno Yes")
-    end
+
     if CheckPosStuck() then
         --aethernet stuck
+        if Player.Job.Level and Player.Job.Level >= 47 then
+            while not Player.Available do
+                yield("/send ESCAPE")
+                sleep(0.5)
+            end
+            yield("/qst stop")
+            yield("/wait 1")
+            yield("/logout")
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+        end
         AddonHandler({
             {
         addon = "TelepotTown",--this might be fine, but needs testing
@@ -259,7 +262,9 @@ while IsAddonExists("_DTR") do
         if tp_error then
             yield("/return")
             yield('/waitaddon "SelectYesno"')
-            yield("/click SelectYesno Yes")
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end            
             sleep(1)
             if Entity.Player.IsCasting then
                 tp_error = false
@@ -331,7 +336,9 @@ while IsAddonExists("_DTR") do
                 yield("/echo [QST Comp Comp] Debug: Interacting with Lionnellais.")
             end
             yield('/waitaddon "SelectYesno"')
-            yield("/click SelectYesno Yes")
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
         elseif IsPlayerCloseTo(-7.1, 40, -16) then
             yield('/qst stop')
             IPC.vnavmesh.PathfindAndMoveTo(Vector3(13.7, 40, 70), false)
@@ -343,9 +350,12 @@ while IsAddonExists("_DTR") do
             end
             MoveAndInteract("Blanmhas")
             yield('/waitaddon "SelectString"')
-            yield("/click SelectIconString Entry1")
+            yield('/send NUMPAD0')
+            yield('/send NUMPAD0')
             yield('/waitaddon "SelectYesno"')
-            yield("/click SelectYesno Yes")
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
         elseif Svc.ClientState.TerritoryType == 129 and IPC.Questionable.GetCurrentQuestId() == "546" then
             --yield("/return")
             --!!more steps to interact with Baderon
@@ -367,7 +377,9 @@ while IsAddonExists("_DTR") do
             sleep(10)
             MoveAndInteract("Slafborn")
             yield('/waitaddon "SelectYesno"')
-            yield("/click SelectYesno Yes")
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
         end
 
 
