@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.7
+version: 1.6.7.1
 triggers:
 - onlogin
 - onterritorychange
@@ -480,7 +480,7 @@ while IsAddonExists("_DTR") do
             if Svc.ClientState.TerritoryType ~= 305 then
                 HardTarget()
             else
-                yield("/e working")
+                sleep(60)
             end
             yield('/rsr auto lowhp')
             yield('/qst start')
