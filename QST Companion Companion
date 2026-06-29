@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.6.2
+version: 1.6.6.3
 triggers:
 - onlogin
 - onterritorychange
@@ -477,7 +477,11 @@ while IsAddonExists("_DTR") do
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true, [263]=true, [305]=true } --castrum centri 305?
     if zones[Svc.ClientState.TerritoryType] then
         while Svc.Condition[56] or Svc.Condition[34] do
-            HardTarget()
+            if Svc.ClientState.TerritoryType ~= 305 then
+                HardTarget()
+            else
+                yield("/e working")
+            end
             yield('/rsr auto lowhp')
             yield('/qst start')
             yield('/target "drowned outranger"') --feint and strike
