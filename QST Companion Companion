@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.6.3
+version: 1.6.7
 triggers:
 - onlogin
 - onterritorychange
@@ -197,7 +197,7 @@ sleep(5)--little time buffer
 while IsAddonExists("_DTR") do
     sleep(6) --little time buffer
 
-    if CheckPosStuck() then
+    if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
         --aethernet stuck
         if Player.Job.Level and Player.Job.Level >= 47 then
             while not Player.Available do
