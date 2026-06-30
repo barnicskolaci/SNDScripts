@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.7.3
+version: 1.6.8
 triggers:
 - onlogin
 - onterritorychange
@@ -195,7 +195,7 @@ end
 yield("/dps wloadall") --this is for Dhog Potato System window placement
 sleep(5)--little time buffer
 while IsAddonExists("_DTR") do
-    sleep(6) --little time buffer
+    sleep(7) --upped to 7 so 3*7 stuckcheck is longer than the 20s needed to logout
 
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
         --aethernet stuck
