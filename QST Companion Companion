@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.8
+version: 1.6.8.1
 triggers:
 - onlogin
 - onterritorychange
@@ -385,7 +385,7 @@ while IsAddonExists("_DTR") do
 
         if not Entity.Target and not IsAddonReady("TelepotTown") then
             yield('/send NUMPAD0') --General stuck trying to interact, idk if this is making aethernet stuck loops
-        elseif Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
+        elseif Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Stuck on aetheryte, attempting to let QST Companion handle it.")
             end
@@ -424,7 +424,7 @@ while IsAddonExists("_DTR") do
                 yield("/interact")
             end
         end
-        if not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --duties MUST be excluded, qst reload reloads path
+        if not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --duties MUST be excluded, qst reload reloads path
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
             end
@@ -464,11 +464,11 @@ while IsAddonExists("_DTR") do
     AddonHandler({
         {
     addon = "TelepotTown",--this might be fine, but needs testing
+    condition = function() return not IPC.Lifestream.IsBusy() end,
     command = function()
         yield('/send ESCAPE')
         yield('/send DECIMAL')
         sleep(3)
-        --yield('/qst start') not sure if needed
     end
         }
     })
@@ -476,7 +476,7 @@ while IsAddonExists("_DTR") do
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true, [263]=true, [305]=true } --castrum centri 305?
     if zones[Svc.ClientState.TerritoryType] then
-        while Svc.Condition[56] or Svc.Condition[34] do
+        while Svc.Condition[56] or Svc.Condition[34] and not IPC.Lifestream.IsBusy() do
             if Svc.ClientState.TerritoryType ~= 305 then
                 HardTarget()
             else
