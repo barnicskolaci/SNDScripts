@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.6.8.1
+version: 1.7
 triggers:
 - onlogin
 - onterritorychange
@@ -58,11 +58,11 @@ end
 local positionHistory = {}
 
 function CheckPosStuck()
-    if Player.Entity == nil or Player.Available == false then
+    if Entity.Player == nil or Entity.Player.Available == false then
         return false
     end
     
-    local currentPos = Player.Entity.Position
+    local currentPos = Entity.Player.Position
     
     -- Handle nil position
     if currentPos == nil then
@@ -122,8 +122,10 @@ function MoveAndInteract(target)
     sleep(1)
     if Entity.Target and Entity.Target.Name == target then
         yield('/vnav movetarget')
-        while Entity.Target and Entity.Target.DistanceTo > 3 do
+        local mvAttempts = 0
+        while Entity.Target and Entity.Target.DistanceTo > 3 and mvAttempts < 60 do
             sleep(0.5)
+            mvAttempts = mvAttempts + 1
         end
         yield("/vnav stop")
         yield('/interact')
@@ -134,7 +136,7 @@ function AddonHandler(addonConfigs)
     for _, config in ipairs(addonConfigs) do
         local Addon = config.addon
         local condition = config.condition
-        
+
         -- Check custom condition if provided
         if condition and not condition() then
             goto skip_addon
@@ -143,23 +145,41 @@ function AddonHandler(addonConfigs)
         if Entity.Player and Entity.Player.IsCasting then
             goto skip_addon
         end
-        
-        while IsAddonExists(Addon) do
+
+        local attempts = 0
+        local maxAttempts = config.maxAttempts or 6
+        local waitBetween = config.waitBetween or 1
+
+        while IsAddonExists(Addon) and attempts < maxAttempts do
             if config.command then
                 config.command()
                 if debug then
-                    yield("/echo [QST Comp Comp] Debug: Handling addon: " .. Addon)
+                    yield("/echo [QST Comp Comp] Debug: Handling addon (custom): " .. Addon)
                 end
             else
-                yield('/send ESCAPE')
-                yield('/send DECIMAL')
+                if IsAddonReady(Addon) then
+                    -- Prefer callback when addon GUI is ready
+                    yield('/callback "'.. Addon ..'" true -1')
+                else
+                    -- Fallback: try to close with keys
+                    yield('/send ESCAPE')
+                    yield('/send DECIMAL')
+                end
                 if debug then
-                    yield("/echo [QST Comp Comp] Debug: Handling addon: " .. Addon)
+                    yield("/echo [QST Comp Comp] Debug: Handling addon: " .. Addon .. " (attempt " .. tostring(attempts+1) .. ")")
                 end
             end
-            sleep(5)
+
+            attempts = attempts + 1
+            sleep(waitBetween)
         end
-        
+
+        if IsAddonExists(Addon) then
+            if debug then
+                yield("/echo [QST Comp Comp] Warning: addon '" .. Addon .. "' still exists after " .. tostring(attempts) .. " attempts")
+            end
+        end
+
         ::skip_addon::
     end
 end
@@ -200,7 +220,7 @@ while IsAddonExists("_DTR") do
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
         --aethernet stuck
         if Player.Job.Level and Player.Job.Level >= 47 then
-            while not Player.Available do
+            while Entity.Player == nil or Entity.Player.Available == false do
                 yield("/send ESCAPE")
                 sleep(0.5)
             end
@@ -266,7 +286,7 @@ while IsAddonExists("_DTR") do
                 yield("/click SelectYesno Yes")
             end            
             sleep(1)
-            if Entity.Player.IsCasting then
+            if Entity.Player and Entity.Player.IsCasting then
                 tp_error = false
             end
             if debug then
@@ -279,7 +299,7 @@ while IsAddonExists("_DTR") do
             yield('/waitaddon "SelectYesno"')
             yield("/click SelectYesno Yes")
             sleep(1)
-            if Entity.Player.IsCasting then
+                        if Entity.Player and Entity.Player.IsCasting then
                 ferry_error = false
             else
               yield("/li limsa")
@@ -290,7 +310,8 @@ while IsAddonExists("_DTR") do
             end
         end]]
 
-        if IPC.Questionable.GetCurrentQuestId() == ("466" or "621" or "618") then -- getting stuck under darm dome and enemies not spawning
+        local qid = IPC.Questionable.GetCurrentQuestId()
+        if qid == "466" or qid == "621" or qid == "618" then -- getting stuck under darm dome and enemies not spawning
             yield('/send R')
             sleep(5)
             yield('/send R')
@@ -304,7 +325,7 @@ while IsAddonExists("_DTR") do
             yield("/vnav moveto -52 33.3 164")
             sleep(5)
         end
-        if Svc.ClientState.TerritoryType == (128 or 129) and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
+        if (Svc.ClientState.TerritoryType == 128 or Svc.ClientState.TerritoryType == 129) and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
             yield('/target Mytesyn') --this could be reworked into moveandinteract()
             sleep(1)
             if Entity.Target and Entity.Target.Name == "Mytesyn" then
@@ -363,7 +384,7 @@ while IsAddonExists("_DTR") do
             yield("/vnav stop")
             yield("/qst stop")
             local counter_destination_interact = 0
-            while not Player.IsCasting and not IPC.Questionable.IsRunning() and counter_destination_interact < 10 do
+            while (not Entity.Player or not Entity.Player.IsCasting) and not IPC.Questionable.IsRunning() and counter_destination_interact < 10 do
                 yield('/send NUMPAD0')
                 sleep(1)
                 counter_destination_interact = counter_destination_interact + 1
@@ -399,10 +420,10 @@ while IsAddonExists("_DTR") do
                 end
                 yield("/interact")
             end
-        elseif Entity.Target and targetname and Entity.Target.Name == targetname then --this just never seems to trigger, idk why
+        elseif Entity.Target and targetName and Entity.Target.Name == targetName then --this just never seems to trigger, idk why
             interactioncount = interactioncount + 1
             if debug then
-                yield("/echo [QST Comp Comp] Debug: trying to interact with " .. targetName .. " " .. interactioncount+1 .. " times.")
+                yield("/echo [QST Comp Comp] Debug: trying to interact with " .. targetName .. " " .. tostring(interactioncount + 1) .. " times.")
             end
             yield("/interact")
             if interactioncount > 5 then
@@ -411,7 +432,7 @@ while IsAddonExists("_DTR") do
                 end
                 interactioncount = 0
                 sleep(70)
-                targetname = nil
+                targetName = nil
             end
         elseif Entity.Target then
             targetName = Entity.Target.Name
@@ -431,7 +452,7 @@ while IsAddonExists("_DTR") do
             yield('/qst reload')
             yield('/qst start')
         end
-        while Player.Available == false and IsAddonExists("_DTR") do
+        while Entity.Player and Entity.Player.Available == false and IsAddonExists("_DTR") do
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Player not available, waiting...")
             end
@@ -476,7 +497,7 @@ while IsAddonExists("_DTR") do
     -- Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true, [263]=true, [305]=true } --castrum centri 305?
     if zones[Svc.ClientState.TerritoryType] then
-        while Svc.Condition[56] or Svc.Condition[34] and not IPC.Lifestream.IsBusy() do
+        while (Svc.Condition[56] or Svc.Condition[34]) and not IPC.Lifestream.IsBusy() do
             if Svc.ClientState.TerritoryType ~= 305 then
                 HardTarget()
             else
