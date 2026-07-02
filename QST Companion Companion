@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.7.2
+version: 1.7.3
 triggers:
 - onlogin
 - onterritorychange
@@ -520,8 +520,10 @@ while IsAddonExists("_DTR") do
             yield('/rsr auto lowhp')
             yield('/qst start')
             yield('/target "drowned outranger"') --feint and strike
-            yield('/target "large boulder"') --the lominsan way
             yield('/target "draconian rosary"') --in the eyes of gods and men
+            if Svc.ClientState.TerritoryType == 307 then
+                yield('/vnav moveto 692.1429 66.79631 -299.17896') --feint and strike
+                yield('/target "large boulder"') --the lominsan wayend
             if Entity.Target and Entity.Target.Name == "Wyvern" then --may need stg else
                 yield('/send TAB')
                 sleep(1)
