@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.7.3
+version: 1.7.3.1
 triggers:
 - onlogin
 - onterritorychange
@@ -524,7 +524,7 @@ while IsAddonExists("_DTR") do
             if Svc.ClientState.TerritoryType == 307 then
                 yield('/vnav moveto 692.1429 66.79631 -299.17896') --feint and strike
                 yield('/target "large boulder"') --the lominsan wayend
-            if Entity.Target and Entity.Target.Name == "Wyvern" then --may need stg else
+            elseif Entity.Target and Entity.Target.Name == "Wyvern" then --may need stg else
                 yield('/send TAB')
                 sleep(1)
             end
