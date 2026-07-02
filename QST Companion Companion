@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.7.1
+version: 1.7.2
 triggers:
 - onlogin
 - onterritorychange
@@ -238,6 +238,7 @@ while IsAddonExists("_DTR") do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
+            sleep(22)
         end
         AddonHandler({
             {
