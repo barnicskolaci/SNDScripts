@@ -568,6 +568,6 @@ while not IsAddonExists("_DTR") do -- prevent stuck on charaselect
             yield('/send DECIMAL')
             sleep(1)
             yield('/send NUMPAD0')
-        else
+        end
     end
 end
