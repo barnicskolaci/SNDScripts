@@ -1,9 +1,10 @@
 --[=====[
 [[SND Metadata]]
-version: 1.7
+version: 1.7.1
 triggers:
 - onlogin
 - onterritorychange
+- onlogout
 
 function_chat_filters:
   OnChatMessage:
@@ -118,13 +119,19 @@ function MoveAndInteract(target)
     if debug then
         yield("/echo [QST Comp Comp] Debug: Moving to and interacting with target: " .. target)
     end
+    yield('/rsr off') -- this is needed cause qst companion turns it on and it prevents targetting
+    yield('/vbm ar disable') --same
     yield('/target '.. target)
-    sleep(1)
+    local TargetAttempts = 0
+    while not Entity.Target or Entity.Target.Name ~= target or TargetAttempts < 20 do
+        sleep(0.1)
+        TargetAttempts = TargetAttempts + 1
+    end
     if Entity.Target and Entity.Target.Name == target then
         yield('/vnav movetarget')
         local mvAttempts = 0
         while Entity.Target and Entity.Target.DistanceTo > 3 and mvAttempts < 60 do
-            sleep(0.5)
+            sleep(0.1)
             mvAttempts = mvAttempts + 1
         end
         yield("/vnav stop")
@@ -325,27 +332,31 @@ while IsAddonExists("_DTR") do
             yield("/vnav moveto -52 33.3 164")
             sleep(5)
         end
-        if (Svc.ClientState.TerritoryType == 128 or Svc.ClientState.TerritoryType == 129) and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
-            yield('/target Mytesyn') --this could be reworked into moveandinteract()
-            sleep(1)
-            if Entity.Target and Entity.Target.Name == "Mytesyn" then
-                yield('/vnav movetarget')
-                while Entity.Target and Entity.Target.DistanceTo > 5 do
-                    sleep(0.5)
-                end
-                yield("/vnav stop")
-                yield('/interact')
-                if debug then
-                    yield("/echo [QST Comp Comp] Debug: Interacting with Mytesyn.")
-                end
-                while Svc.ClientState.TerritoryType == 128 do
-                    yield('/send NUMPAD0')
-                    sleep(1)
-                end
-                sleep(1)
+        if (Svc.ClientState.TerritoryType == 198 or Svc.ClientState.TerritoryType == 128 or Svc.ClientState.TerritoryType == 129) and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
+            if Svc.ClientState.TerritoryType == 198 then
+                MoveAndInteract("Merlwyb")
             else
-                if IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
-                    yield("/li inn")
+                yield('/target Mytesyn') --this could be reworked into moveandinteract()
+                sleep(1)
+                if Entity.Target and Entity.Target.Name == "Mytesyn" then
+                    yield('/vnav movetarget')
+                    while Entity.Target and Entity.Target.DistanceTo > 5 do
+                        sleep(0.5)
+                    end
+                    yield("/vnav stop")
+                    yield('/interact')
+                    if debug then
+                        yield("/echo [QST Comp Comp] Debug: Interacting with Mytesyn.")
+                    end
+                    while Svc.ClientState.TerritoryType == 128 do
+                        yield('/send NUMPAD0')
+                        sleep(1)
+                    end
+                    sleep(1)
+                else
+                    if IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
+                        yield("/li inn")
+                    end
                 end
             end
         end
@@ -405,6 +416,8 @@ while IsAddonExists("_DTR") do
 
 
         if not Entity.Target and not IsAddonReady("TelepotTown") then
+            yield('/send NUMPAD0')
+            yield('/send NUMPAD0')
             yield('/send NUMPAD0') --General stuck trying to interact, idk if this is making aethernet stuck loops
         elseif Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
             if debug then
@@ -545,4 +558,16 @@ while IsAddonExists("_DTR") do
         yield("/click SelectYesno Yes")
         MoveAndInteract("Swygskyf")
     end]]
+end
+while not IsAddonExists("_DTR") do -- prevent stuck on charaselect
+    sleep(10)
+    if IsAddonExists("CharaSelect") and not IsAddonExists("SelectOK") then
+        sleep(10)
+        if IsAddonExists("CharaSelect") and not IsAddonExists("SelectOK") then
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
+            sleep(1)
+            yield('/send NUMPAD0')
+        else
+    end
 end
