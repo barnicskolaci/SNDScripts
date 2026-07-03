@@ -1,7 +1,7 @@
 --[=====[
 [[SND Metadata]]
-version: 1.7.3.1
-triggers:
+version: 1.7.4
+
 - onlogin
 - onterritorychange
 - onlogout
@@ -360,6 +360,10 @@ while IsAddonExists("_DTR") do
                     end
                 end
             end
+        end
+
+        if Svc.ClientState.TerritoryType == 138 then --vbm moving to sahagin territory in western la noscea
+            yield("/vbm ai off")
         end
 
         if Svc.ClientState.TerritoryType == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then
