@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.0.1
+version: 2.0.2
 triggers:
 - onlogin
 - onlogout
@@ -229,7 +229,7 @@ end
 
 --[[Script start]]
 
-ield("/dps wloadall") --this is for Dhog Potato System window placement
+yield("/dps wloadall") --this is for Dhog Potato System window placement
 sleep(1.155)--little time buffer
 while Addons.GetAddon("_DTR").Exists do
     if Player.Job.Level and Player.Job.Level >= stoplevel then
