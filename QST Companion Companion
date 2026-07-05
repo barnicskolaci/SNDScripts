@@ -1,11 +1,17 @@
 --[=====[
 [[SND Metadata]]
-version: 1.9.0.2 --prepping for 2.0 rework
-
+version: 2.0.0
+triggers:
 - onlogin
-- onterritorychange
 - onlogout
-
+- onterritorychange
+dependencies:
+- source: git://McVaxius/dhogsbreakfeast/main/dfunc.lua
+  name: dfunc
+  type: git
+- source: git://xa-io/ffxiv-tools/main/snd/xafunc.lua
+  name: xafunc
+  type: git
 function_chat_filters:
   OnChatMessage:
     channels:
@@ -18,42 +24,53 @@ function_chat_filters:
 [[End Metadata]]
 --]=====]
 
---require("dfunc")
---require("xafunc")
+-- needs https://github.com/xa-io/ffxiv-tools/blob/main/snd/xafunc.lua
+-- and https://github.com/McVaxius/dhogsbreakfeast/blob/main/dfunc.lua
+
 import("System.Numerics")
 
 local tp_error = false
 local ferry_error = false
 local interactioncount = 0
 local targetName = nil
-local debug = false
+local debug = true
 local stoplevel = 47
 
-function FastCloseCheck(a, b, tol)
-    tol = tol or 0.5
-    return math.abs(a.X-b.X) < tol
-       and math.abs(a.Y-b.Y) < tol
-       and math.abs(a.Z-b.Z) < tol
+
+function OnChatMessage()
+    if tp_error == false then
+        tp_error = true
+        if debug then
+            Engines.Native.Run("/echo [QST] Debug: Teleport error detected.")
+        end
+    end
 end
--- Returns true if Entity.Player.Position is within delta units of the target coordinates
-function IsPlayerCloseTo(x, y, z, delta)
+
+function OnChatMessage2()
+    if ferry_error == false then
+        ferry_error = true
+        if debug then
+            Engines.Native.Run("/echo [QST] Debug: Ferry error detected.")
+        end
+    end
+end
+
+function CloseCheck(a, b, tol) --tol is squared
+    tol = tol or 4
+    return ((a.X-b.X)^2 + (a.Y-b.Y)^2 + (a.Z-b.Z)^2) < tol
+end
+
+function IsPlayerCloseTo(x, y, z, deltasquared) --delta is squared
     if Entity.Player == nil or Entity.Player.Position == nil then
         return false
     end
     local p = Entity.Player.Position
-    delta = delta or 0.5
-    local result = FastCloseCheck(p, {X=x, Y=y, Z=z}, delta)
+    deltasquared = deltasquared or 4
+    local result = CloseCheck(p, {X=x, Y=y, Z=z}, deltasquared)
     if debug then
-        yield("/echo [QST] Debug: Checking if player is close to (" .. x .. ", " .. y .. ", " .. z .. ") with delta " .. delta .. " - Result: " .. tostring(result))
+        yield("/echo [QST] Debug: Checking if player is close to (" .. x .. ", " .. y .. ", " .. z .. ") with delta^2 " .. deltasquared .. " - Result: " .. tostring(result))
     end
     return result
-end
-
-function OnChatMessage()
-    tp_error = true
-end
-function OnChatMessage2()
-    ferry_error = true
 end
 
 
@@ -97,7 +114,7 @@ function CheckPosStuck()
         local pos3 = positionHistory[3]
         
         -- Compare Vector3 objects directly
-        if FastCloseCheck(pos1, pos2) and FastCloseCheck(pos2, pos3) and Entity.Player and not Entity.Player.IsInCombat then
+        if CloseCheck(pos1, pos2, 2) and CloseCheck(pos2, pos3, 2) and Entity.Player and not Entity.Player.IsInCombat then
             yield("/echo Player is not moving anywhere.")
             return true
         end
@@ -105,14 +122,6 @@ function CheckPosStuck()
     
     return false
 end        
-
-function IsAddonReady(name)
-    return Addons.GetAddon(name).Ready
-end
-
-function IsAddonExists(name)
-    return Addons.GetAddon(name).Exists
-end
 
 function sleep(seconds)
     yield('/wait ' .. tostring(seconds))
@@ -160,14 +169,14 @@ function AddonHandler(addonConfigs)
         local maxAttempts = config.maxAttempts or 6.002
         local waitBetween = config.waitBetween or 1.002
 
-        while IsAddonExists(Addon) and attempts < maxAttempts do
+        while Addons.GetAddon(Addon).Exists and attempts < maxAttempts do
             if config.command then
                 config.command()
                 if debug then
                     yield("/echo [QST Comp Comp] Debug: Handling addon (custom): " .. Addon)
                 end
             else
-                if IsAddonReady(Addon) then
+                if Addons.GetAddon(Addon).Ready then
                     -- Prefer callback when addon GUI is ready
                     yield('/callback "'.. Addon ..'" true -1')
                 else
@@ -184,10 +193,8 @@ function AddonHandler(addonConfigs)
             sleep(waitBetween)
         end
 
-        if IsAddonExists(Addon) then
-            if debug then
-                yield("/echo [QST Comp Comp] Warning: addon '" .. Addon .. "' still exists after " .. tostring(attempts) .. " attempts")
-            end
+        if debug and Addons.GetAddon(Addon).Exists then
+            yield("/echo [QST Comp Comp] Warning: addon '" .. Addon .. "' still exists after " .. tostring(attempts) .. " attempts")
         end
 
         ::skip_addon::
@@ -222,31 +229,44 @@ end
 
 --[[Script start]]
 
-yield("/dps wloadall") --this is for Dhog Potato System window placement
-sleep(5)--little time buffer
-yield("/snd stop all") --disable to see where it gets stuck without it
-while IsAddonExists("_DTR") do
+--yield("/dps wloadall") --this is for Dhog Potato System window placement
+sleep(1.155)--little time buffer
+while Addons.GetAddon("_DTR").Exists do
+    if Player.Job.Level and Player.Job.Level >= stoplevel then
+        while Entity.Player == nil or Entity.Player.Available == false do
+            yield("/send ESCAPE")
+            sleep(0.506)
+        end
+        yield("/qst stop")
+        if not Addons.GetAddon("_Exp"):GetNode(1,3).IsVisible and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
+            yield("/li limsa")
+        end
+        while IPC.Lifestream.IsBusy() do
+            sleep(0.9)
+        end
+    elseif IPC.Questionable.IsQuestComplete("941") and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --sanctuary
+        yield("/qst stop")
+        if not Addons.GetAddon("_Exp"):GetNode(1,3).IsVisible and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
+            yield("/li limsa")
+        end
+        while IPC.Lifestream.IsBusy() do
+            sleep(0.901)
+        end
+        sleep(1.9)
+        yield("/autoduty run support 1042 1 false") --stone vigil
+    elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --duties MUST be excluded, qst reload reloads path
+        if debug then
+            yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
+        end
+        yield('/qst reload')
+        yield('/qst start')
+    end
     if Entity.Player and not Entity.Player.IsInCombat then
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
+    sleep(1.144) --wait between cycles
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
-        if Player.Job.Level and Player.Job.Level >= stoplevel then
-            while Entity.Player == nil or Entity.Player.Available == false do
-                yield("/send ESCAPE")
-                sleep(0.506)
-            end
-            yield("/qst stop")
-            sleep(1.007)
-            yield("/logout")
-            yield('/waitaddon "SelectYesno"')
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
-            sleep(22.008)--! tp to limsa before
-        end
-        
-        sleep(7) --upped to 7 so 3*7 stuckcheck is longer than the 20s needed to logout
         AddonHandler({
             {
         addon = "TelepotTown",--this might be fine, but needs testing
@@ -287,7 +307,7 @@ while IsAddonExists("_DTR") do
             }
           })
 
-        if tp_error then
+        if tp_error == true then
             yield("/return")
             yield('/waitaddon "SelectYesno"')
             if Addons.GetAddon("SelectYesno").Ready then
@@ -302,12 +322,32 @@ while IsAddonExists("_DTR") do
             end
         end
 
-        if ferry_error then --! looks unnecessary now
+        if ferry_error == true then --! looks unnecessary now
             yield("/return")
             yield('/waitaddon "SelectYesno"')
-            yield("/click SelectYesno Yes")
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
             sleep(1)
-                        if Entity.Player and Entity.Player.IsCasting then
+            if Entity.Player and Entity.Player.IsCasting then
+                ferry_error = false
+            else
+              yield("/li limsa")
+              ferry_error = false
+            end
+            if debug then
+                yield("/echo [QST Comp Comp] Debug: Ferry error detected and handled.")
+            end
+        end
+
+        if Svc.ClientState.TerritoryType == 128 and Entity.Player and Entity.Player.Position.Y > 90 then --stuck in landing pad
+            yield("/return")
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+            sleep(1)
+            if Entity.Player and Entity.Player.IsCasting then
                 ferry_error = false
             else
               yield("/li limsa")
@@ -420,7 +460,7 @@ while IsAddonExists("_DTR") do
         end
 
 
-        if not Entity.Target and not IsAddonReady("TelepotTown") then
+        if not Entity.Target and not Addons.GetAddon("TelepotTown").Ready then
             yield('/send NUMPAD0')
             yield('/send NUMPAD0')
             yield('/send NUMPAD0') --General stuck trying to interact, idk if this is making aethernet stuck loops
@@ -463,14 +503,7 @@ while IsAddonExists("_DTR") do
                 yield("/interact")
             end
         end
-        if not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --duties MUST be excluded, qst reload reloads path
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
-            end
-            yield('/qst reload')
-            yield('/qst start')
-        end
-        while Entity.Player and Entity.Player.Available == false and IsAddonExists("_DTR") do
+        while Entity.Player and Entity.Player.Available == false and Addons.GetAddon("_DTR").Ready do
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Player not available, waiting...")
             end
@@ -512,17 +545,14 @@ while IsAddonExists("_DTR") do
         }
     })]]
 
-    --[[Solo duties 
+    --Solo duties 
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true, [263]=true, [305]=true } --castrum centri 305?
     if zones[Svc.ClientState.TerritoryType] then
         while (Svc.Condition[56] or Svc.Condition[34]) and not IPC.Lifestream.IsBusy() do
-            if Svc.ClientState.TerritoryType ~= 305 then
-                HardTarget()
-            else
-                sleep(60.026)
-            end
+            HardTarget()
+            sleep(2.025)
+            yield("/vbm ai off")
             yield('/rsr auto lowhp')
-            yield('/qst start')
             yield('/target "drowned outranger"') --feint and strike
             yield('/target "draconian rosary"') --in the eyes of gods and men
             if Svc.ClientState.TerritoryType == 307 then
@@ -534,7 +564,7 @@ while IsAddonExists("_DTR") do
             end
         end
         yield('/vbm cfg aiconfig forbidactions true')
-    end]]
+    end
     --[[if IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") and Entity.Target and Entity.Target.Name  == "Swygskyf" then --!!update coords, leve handler
         if debug then
             yield("/echo [QST Comp Comp] Debug: Attempting leve.")
@@ -544,16 +574,20 @@ while IsAddonExists("_DTR") do
             yield("/click JournalDetail AcceptMap")
         end
         IPC.vnavmesh.PathfindAndMoveTo(Vector3(613, 8.4, 477), false)
-        while IPC.vnavmesh.IsRunning do
+        while IPC.vnavmesh.IsRunning() do
             sleep(1)
         end        
-        if not Addons.GetAddon("Journal").Ready then
+        if not Addons.GetAddon("Journal").Exists then
             yield("/send J")
         end
         yield('/waitaddon "Journal"')
-        yield("/click JournalDetail Initiate")
+        if Addons.GetAddon("JournalDetail").Ready then
+            yield("/click JournalDetail Initiate")
+        end
         yield('/waitaddon "SelectYesno"')
-        yield("/click SelectYesno Yes")
+        if Addons.GetAddon("SelectYesno").Ready then
+            yield("/click SelectYesno Yes")
+        end
         sleep(1)
         yield("/target crab")
         yield("/rsr manual")
@@ -562,15 +596,17 @@ while IsAddonExists("_DTR") do
             sleep(1)
         end
         yield('/waitaddon "SelectYesno"')
-        yield("/click SelectYesno Yes")
+        if Addons.GetAddon("SelectYesno").Ready then
+            yield("/click SelectYesno Yes")
+        end
         MoveAndInteract("Swygskyf")
     end]]
 end
-while not IsAddonExists("_DTR") do -- prevent stuck on charaselect
+while not Addons.GetAddon("_DTR").Exists do -- prevent stuck on charaselect
     sleep(10.037)
-    if IsAddonExists("CharaSelect") and not IsAddonExists("SelectOK") then
+    if Addons.GetAddon("CharaSelect").Exists and not Addons.GetAddon("SelectOK").Exists then
         sleep(10.038)
-        if IsAddonExists("CharaSelect") and not IsAddonExists("SelectOK") then
+        if Addons.GetAddon("CharaSelect").Exists and not Addons.GetAddon("SelectOK").Exists then
             yield('/send DECIMAL')
             yield('/send DECIMAL')
             sleep(1.039)
