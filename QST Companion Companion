@@ -230,7 +230,7 @@ end
 --[[Script start]]
 
 yield("/dps wloadall") --this is for Dhog Potato System window placement
-sleep(1.155)--little time buffer
+sleep(5.01)--little time buffer
 while Addons.GetAddon("_DTR").Exists do
     if Player.Job.Level and Player.Job.Level >= stoplevel then
         while Entity.Player == nil or Entity.Player.Available == false do
@@ -265,7 +265,7 @@ while Addons.GetAddon("_DTR").Exists do
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
-    sleep(1.144) --wait between cycles
+    sleep(4.1) --wait between cycles
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
         AddonHandler({
             {
