@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.9 --prepping for 2.0 rework
+version: 1.9.0.1 --prepping for 2.0 rework
 
 - onlogin
 - onterritorychange
@@ -226,7 +226,7 @@ yield("/dps wloadall") --this is for Dhog Potato System window placement
 sleep(5)--little time buffer
 yield("/snd stop all") --disable to see where it gets stuck without it
 while IsAddonExists("_DTR") do
-    if if Entity.Player and not Entity.Player.IsInCombat then
+    if Entity.Player and not Entity.Player.IsInCombat then
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
