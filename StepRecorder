@@ -1,0 +1,50 @@
+--[=====[
+[[SND Metadata]]
+version: 1.0.0
+
+- onlogin
+[[End Metadata]]
+--]=====]
+
+local debug = false
+local pollInterval = 0.05    -- how often to sample position
+local stillThreshold = 0.25  -- seconds unchanged before we report
+local posTolerance = 0.01    -- how close counts as "the same" position
+
+function sleep(seconds)
+    yield('/wait ' .. tostring(seconds))
+end
+
+function FastCloseCheck(a, b, tol)
+    tol = tol or 0.5
+    return math.abs(a.X - b.X) < tol
+       and math.abs(a.Y - b.Y) < tol
+       and math.abs(a.Z - b.Z) < tol
+end
+
+local lastPos = nil
+local stillSince = nil
+local hasReported = false
+
+while true do
+    if Entity.Player ~= nil and Entity.Player.Position ~= nil then
+        local pos = Entity.Player.Position
+
+        if lastPos == nil or not FastCloseCheck(pos, lastPos, posTolerance) then
+            -- position moved (or first sample) - reset tracking
+            lastPos = pos
+            stillSince = os.clock()
+            hasReported = false
+        elseif not hasReported and (os.clock() - stillSince) >= stillThreshold then
+            local targetName = (Entity.Target and Entity.Target.Name) or "none"
+            yield(string.format("/echo [PosWatch] Stopped at (%.3f, %.3f, %.3f) - Target: %s", pos.X, pos.Y, pos.Z, targetName))
+            hasReported = true
+        end
+    else
+        lastPos = nil
+        stillSince = nil
+        hasReported = false
+    end
+
+    sleep(pollInterval)
+end
