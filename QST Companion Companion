@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.9.0.1 --prepping for 2.0 rework
+version: 1.9.0.2 --prepping for 2.0 rework
 
 - onlogin
 - onterritorychange
@@ -18,8 +18,8 @@ function_chat_filters:
 [[End Metadata]]
 --]=====]
 
-require("dfunc")
-require("xafunc")
+--require("dfunc")
+--require("xafunc")
 import("System.Numerics")
 
 local tp_error = false
