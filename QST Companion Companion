@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.0.5
+version: 2.0.6
 triggers:
 - onlogin
 - onlogout
@@ -29,6 +29,31 @@ local targetName = nil
 local debug = false
 local stoplevel = 47
 
+function TerritoryType()
+    if Svc.ClientState.TerritoryType then
+        return Svc.ClientState.TerritoryType
+    end 
+end
+
+function QuestText()
+    if not Addons.GetAddon("_ToDoList").Exists then
+        return ""
+    end
+    if Addons.GetAddon("_ToDoList"):GetNode(1,20101,6).IsVisible then
+        return Addons.GetAddon("_ToDoList"):GetNode(1,20101,6).Text
+    elseif Addons.GetAddon("_ToDoList"):GetNode(1,20101,7).IsVisible then
+        return Addons.GetAddon("_ToDoList"):GetNode(1,20101,7).Text
+    else
+        return ""
+    end
+end
+
+function IsInSanctuary()
+    if not Addons.GetAddon("_Exp").Exists then
+        return false
+    end
+    return Addons.GetAddon("_Exp"):GetNode(1,3).IsVisible
+end
 
 function OnChatMessage()
     if tp_error == false then
@@ -72,7 +97,7 @@ end
 local positionHistory = {}
 
 function CheckPosStuck()
-    if Entity.Player == nil or Entity.Player.Available == false then
+    if not Entity.Player or not Player.Available then
         return false
     end
     
@@ -128,7 +153,7 @@ function MoveAndInteract(target)
     yield('/vbm ar disable') --same
     yield('/target '.. target)
     local TargetAttempts = 0
-    while not Entity.Target or Entity.Target.Name ~= target or TargetAttempts < 20 do
+    while not (Entity.Target and Entity.Target.Name == target) and TargetAttempts < 20 do
         sleep(0.100)
         TargetAttempts = TargetAttempts + 1
     end
@@ -212,7 +237,7 @@ function HardTarget()
     sleep(1.005)
 
     if Svc.Condition[56] or Svc.Condition[34] then
-      if (Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true) or (Svc.Targets.Target and tostring(Entity.Target.Type):match("^EventObj") )then
+      if (Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true) or (Svc.Targets.Target and tostring(Svc.Targets.Target.Type):match("^EventObj") )then
         yield('/vnav movetarget')
       end
     end
@@ -226,24 +251,24 @@ yield("/dps wloadall") --this is for Dhog Potato System window placement
 sleep(5.01)--little time buffer
 while Addons.GetAddon("_DTR").Exists do
     if Player.Job.Level and Player.Job.Level >= stoplevel then
-        while Entity.Player == nil or Entity.Player.Available == false do
+        while not Entity.Player or not Player.Available do
             yield("/send ESCAPE")
             sleep(0.506)
         end
         yield("/qst stop")
-        if not Addons.GetAddon("_Exp"):GetNode(1,3).IsVisible and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
+        if not IsInSanctuary() and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
             yield("/li limsa")
-        end
-        while IPC.Lifestream.IsBusy() do
-            sleep(0.9)
+            while IPC.Lifestream.IsBusy() do
+                sleep(0.9)
+            end
         end
     elseif IPC.Questionable.IsQuestComplete("941") and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --sanctuary
         yield("/qst stop")
-        if not Addons.GetAddon("_Exp"):GetNode(1,3).IsVisible and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
+        if not IsInSanctuary() and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
             yield("/li limsa")
-        end
-        while IPC.Lifestream.IsBusy() do
-            sleep(0.901)
+            while IPC.Lifestream.IsBusy() do
+                sleep(0.901)
+            end
         end
         sleep(1.9)
         yield("/autoduty run support 1042 1 false") --stone vigil
@@ -252,7 +277,7 @@ while Addons.GetAddon("_DTR").Exists do
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
-    sleep(4.1) --wait between cycles
+    sleep(5.1) --wait between cycles
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
         AddonHandler({
             {
@@ -290,6 +315,9 @@ while Addons.GetAddon("_DTR").Exists do
         addon = "Description",--stuck on frontline info
             },
             {
+        addon = "Repair",        
+            },
+            {
         addon = "GrandCompanyExchange",--stuck on GC exchange
             }
           })
@@ -307,29 +335,13 @@ while Addons.GetAddon("_DTR").Exists do
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Teleport error detected and handled.")
             end
-        elseif ferry_error == true then --! looks unnecessary now
+        elseif TerritoryType() == 128 and Entity.Player and Entity.Player.Position.Y > 90 then --stuck in landing pad
             yield("/return")
             yield('/waitaddon "SelectYesno"')
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
-            sleep(1)
-            if Entity.Player and Entity.Player.IsCasting then
-                ferry_error = false
-            else
-              yield("/li limsa")
-              ferry_error = false
-            end
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Ferry error detected and handled.")
-            end
-        elseif Svc.ClientState.TerritoryType == 128 and Entity.Player and Entity.Player.Position.Y > 90 then --stuck in landing pad
-            yield("/return")
-            yield('/waitaddon "SelectYesno"')
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
-            sleep(1)
+            sleep(1.334)
             if Entity.Player and Entity.Player.IsCasting then
                 ferry_error = false
             else
@@ -350,15 +362,39 @@ while Addons.GetAddon("_DTR").Exists do
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Quest 466 detected, sending /send R twice.")
             end
-        elseif IPC.Questionable.GetCurrentQuestId() == "889" then
+        elseif qid == "889" then --! needs more specific instructions
             MoveAndInteract("Stolen Wares")
+        elseif (TerritoryType() == 129 or TerritoryType() == 128) and qid == "546" and QuestText() == "Speak with Baderon." then
+            yield("/qst stop")
+            yield("/li The Aftcastle")
+            while IPC.Lifestream.IsBusy() or not Entity.Player or not Player.Available do
+                sleep(0.444)
+            end
+            sleep(2.424)
+            yield('/vnav moveto 17.85372 40.21601 -4.443381')
+            repeat
+                sleep(1.426)
+            until not IPC.vnavmesh.IsRunning() 
+            MoveAndInteract("Baderon")
+        elseif TerritoryType() == 156 and qid == "1005" and IsPlayerCloseTo(-65.19908, 2.9204268, -634.66235) then
+            yield("/qst stop")
+            MoveAndInteract("Wedge")
+        elseif TerritoryType() == 156 and qid == "1005" and IPC.Questionable.GetCurrentStepData().InteractionType == "CompleteQuest" then --! this is no longer needed for me, needs testing
+            yield("/qst stop")
+            yield("/li dhona")
+            sleep(10.018)
+            MoveAndInteract("Slafborn")
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
         end
-        while Svc.ClientState.TerritoryType == 134 and (IPC.Questionable.GetCurrentQuestId() == "462" or IPC.Questionable.GetCurrentQuestId() == "403") do --On to Summerford/relightting the torch(?)
+        while TerritoryType() == 134 and (qid == "462" or qid == "403") do --On to Summerford/relightting the torch(?)
             yield("/vnav moveto -52 33.3 164")
             sleep(5.011)
         end
-        if (Svc.ClientState.TerritoryType == 198 or Svc.ClientState.TerritoryType == 128 or Svc.ClientState.TerritoryType == 129) and IPC.Questionable.GetCurrentQuestId() == "545" then --The Mizzenmast Repast
-            if Svc.ClientState.TerritoryType == 198 then
+        if (TerritoryType() == 198 or TerritoryType() == 128 or TerritoryType() == 129) and qid == "545" then --The Mizzenmast Repast
+            if TerritoryType() == 198 then
                 MoveAndInteract("Merlwyb")
             else
                 yield('/target Mytesyn') --this could be reworked into moveandinteract()
@@ -373,13 +409,13 @@ while Addons.GetAddon("_DTR").Exists do
                     if debug then
                         yield("/echo [QST Comp Comp] Debug: Interacting with Mytesyn.")
                     end
-                    while Svc.ClientState.TerritoryType == 128 do
+                    while TerritoryType() == 128 do
                         yield('/send NUMPAD0')
                         sleep(1.014)
                     end
                     sleep(1.015)
                 else
-                    if IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
+                    if qid == "545" and TerritoryType() ~= 177 then
                         yield("/li inn")
                         while IPC.Lifestream.IsBusy() do
                             sleep(1.016)
@@ -390,24 +426,10 @@ while Addons.GetAddon("_DTR").Exists do
         end
 
         --Territory-specific stuck checks
-        if Svc.ClientState.TerritoryType == 138 then --vbm moving to sahagin territory in western la noscea
+        if TerritoryType() == 138 then --vbm moving to sahagin territory in western la noscea
             yield("/vbm ai off")
-        elseif Svc.ClientState.TerritoryType == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then
-            yield('/qst stop')
-            MoveAndInteract("Lionnellais")
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Interacting with Lionnellais.")
-            end
-            yield('/waitaddon "SelectYesno"')
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
-        elseif IsPlayerCloseTo(-7.1, 40, -16) then --! idk what this is
-            yield('/qst stop')
-            IPC.vnavmesh.PathfindAndMoveTo(Vector3(13.7, 40, 70), false)
-            sleep(10.016)
-        elseif Svc.ClientState.TerritoryType == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then
-            yield('/qst stop')
+        elseif TerritoryType() == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then --limsa landing pad
+            yield("/qst stop")
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Interacting with L'nophlo.")
             end
@@ -419,29 +441,45 @@ while Addons.GetAddon("_DTR").Exists do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
-        elseif Svc.ClientState.TerritoryType == 129 and IPC.Questionable.GetCurrentQuestId() == "546" then
-            --yield("/return")
-            --!!more steps to interact with Baderon
-        elseif Svc.ClientState.TerritoryType == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) and Entity.Target and Entity.Target.Name == "Destination" then
-            yield("/vnav stop")
+        elseif TerritoryType() == 130 and IsPlayerCloseTo(-20.7, 10, -41) then --uldah landing pad
             yield("/qst stop")
+            MoveAndInteract("Willahelm")
+            if debug then
+                yield("/echo [QST Comp Comp] Debug: Interacting with Willahelm.")
+            end
+            yield('/waitaddon "SelectString"')
+            sleep(1.441)
+            yield('/send NUMPAD0')
+            yield('/send NUMPAD0')
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+            sleep(10.399)
+            yield("/qst stop")
+            MoveAndInteract("Flame Honor Guard")
+        elseif TerritoryType() == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then --gridania landing pad
+            yield("/qst stop")
+            MoveAndInteract("Lionnellais")
+            if debug then
+                yield("/echo [QST Comp Comp] Debug: Interacting with Lionnellais.")
+            end
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+        elseif IsPlayerCloseTo(-7.1, 40, -16) then --! idk what this is
+            yield("/qst stop")
+            IPC.vnavmesh.PathfindAndMoveTo(Vector3(13.7, 40, 70), false)
+            sleep(10.016)
+        elseif TerritoryType() == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) and Entity.Target and Entity.Target.Name == "Destination" then --!some quest i should specify
+            yield("/qst stop")
+            yield("/vbm ai off")
             local counter_destination_interact = 0
             while (not Entity.Player or not Entity.Player.IsCasting) and not IPC.Questionable.IsRunning() and counter_destination_interact < 10 do
                 yield('/send NUMPAD0')
                 sleep(1.017)
                 counter_destination_interact = counter_destination_interact + 1
-            end
-        elseif Svc.ClientState.TerritoryType == 156 and IPC.Questionable.GetCurrentQuestId() == "1005" and IsPlayerCloseTo(-65.19908, 2.9204268, -634.66235) then
-            yield("/qst stop")
-            MoveAndInteract("Wedge")
-        elseif Svc.ClientState.TerritoryType == 156 and IPC.Questionable.GetCurrentQuestId() == "1005" and IPC.Questionable.GetCurrentStepData().InteractionType == "CompleteQuest" then
-            yield("/qst stop")
-            yield("/li dhona")
-            sleep(10.018)
-            MoveAndInteract("Slafborn")
-            yield('/waitaddon "SelectYesno"')
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
             end
         elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --duties MUST be excluded, qst reload reloads path
             if debug then
@@ -452,16 +490,16 @@ while Addons.GetAddon("_DTR").Exists do
         end
 
         if not Entity.Target and not Addons.GetAddon("TelepotTown").Ready then
-            yield('/send NUMPAD0')
-            yield('/send NUMPAD0')
-            yield('/send NUMPAD0') --General stuck trying to interact, idk if this is making aethernet stuck loops
+            yield("/send NUMPAD0")
+            yield("/send NUMPAD0")
+            yield("/send NUMPAD0") --General stuck trying to interact, idk if this is making aethernet stuck loops
         elseif Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Stuck on aetheryte, attempting to let QST Companion handle it.")
             end
-            yield('/qst reload')
+            yield("/qst reload")
             sleep(1.019)
-            yield('/qst start')
+            yield("/qst start")
             sleep(10.02)
             if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") then
                 if debug then
@@ -469,7 +507,7 @@ while Addons.GetAddon("_DTR").Exists do
                 end
                 yield("/interact")
             end
-        elseif Entity.Target and targetName and Entity.Target.Name == targetName then --this just never seems to trigger, idk why
+        elseif Entity.Target and targetName and Entity.Target.Name == targetName then --!this just never seems to trigger, idk why, plus idk if it's even needed
             interactioncount = interactioncount + 1
             if debug then
                 yield("/echo [QST Comp Comp] Debug: trying to interact with " .. targetName .. " " .. tostring(interactioncount + 1) .. " times.")
@@ -493,14 +531,6 @@ while Addons.GetAddon("_DTR").Exists do
                 end
                 yield("/interact")
             end
-        end
-        while Entity.Player and Entity.Player.Available == false and Addons.GetAddon("_DTR").Ready do
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Player not available, waiting...")
-            end
-            sleep(1.022)
-            yield('/send DECIMAL')
-            yield('/send ESCAPE')
         end
         positionHistory = {}
     end
@@ -546,7 +576,7 @@ while Addons.GetAddon("_DTR").Exists do
             yield('/rsr auto lowhp')
             yield('/target "drowned outranger"') --feint and strike
             yield('/target "draconian rosary"') --in the eyes of gods and men
-            if Svc.ClientState.TerritoryType == 307 then
+            if TerritoryType() == 307 then
                 yield('/vnav moveto 692.1429 66.79631 -299.17896') --feint and strike
                 yield('/target "large boulder"') --the lominsan wayend
             elseif Entity.Target and Entity.Target.Name == "Wyvern" then --may need stg else
@@ -556,7 +586,7 @@ while Addons.GetAddon("_DTR").Exists do
         end
         yield('/vbm cfg aiconfig forbidactions true')
     end
-    --[[if IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") and Entity.Target and Entity.Target.Name  == "Swygskyf" then --!!update coords, leve handler
+    --[[if IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") and Entity.Target and Entity.Target.Name  == "Swygskyf" then --!update coords, leve handler
         if debug then
             yield("/echo [QST Comp Comp] Debug: Attempting leve.")
         end
@@ -597,7 +627,7 @@ while not Addons.GetAddon("_DTR").Exists do -- prevent stuck on charaselect
     sleep(10.037)
     if Addons.GetAddon("CharaSelect").Exists and not Addons.GetAddon("SelectOK").Exists then
         sleep(10.038)
-        if Addons.GetAddon("CharaSelect").Exists and not Addons.GetAddon("SelectOK").Exists then
+        if Addons.GetAddon("CharaSelect").Exists and not Addons.GetAddon("SelectOK").Exists then --!could be replaced with a callback
             yield('/send DECIMAL')
             yield('/send DECIMAL')
             sleep(1.039)
