@@ -132,7 +132,7 @@ function CheckPosStuck()
         local pos3 = positionHistory[3]
         
         -- Compare Vector3 objects directly
-        if CloseCheck(pos1, pos2, 2) and CloseCheck(pos2, pos3, 2) and Entity.Player and not Entity.Player.IsInCombat then
+        if CloseCheck(pos1, pos2, 2) and CloseCheck(pos2, pos3, 2) and Entity.Player and not Entity.Player.IsInCombat and not Entity.Player.IsCasting and Player.Available then
             yield("/echo Player is not moving anywhere.")
             return true
         end
@@ -273,11 +273,11 @@ while Addons.GetAddon("_DTR").Exists do
         sleep(1.9)
         yield("/autoduty run support 1042 1 false") --stone vigil
     end
+    sleep(5.1) --wait between cycles
     if Entity.Player and not Entity.Player.IsInCombat then
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
-    sleep(5.1) --wait between cycles
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
         AddonHandler({
             {
@@ -427,7 +427,8 @@ while Addons.GetAddon("_DTR").Exists do
 
         --Territory-specific stuck checks
         if TerritoryType() == 138 then --vbm moving to sahagin territory in western la noscea
-            yield("/vbm ai off")
+            yield("/vbm ai off")            
+            yield("/vbm ar clear")
         elseif TerritoryType() == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then --limsa landing pad
             yield("/qst stop")
             if debug then
@@ -475,21 +476,18 @@ while Addons.GetAddon("_DTR").Exists do
         elseif TerritoryType() == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) and Entity.Target and Entity.Target.Name == "Destination" then --!some quest i should specify
             yield("/qst stop")
             yield("/vbm ai off")
+            yield("/vbm ar clear")
             local counter_destination_interact = 0
             while (not Entity.Player or not Entity.Player.IsCasting) and not IPC.Questionable.IsRunning() and counter_destination_interact < 10 do
                 yield('/send NUMPAD0')
                 sleep(1.017)
                 counter_destination_interact = counter_destination_interact + 1
             end
-        elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --duties MUST be excluded, qst reload reloads path
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
-            end
-            yield('/qst reload')
-            yield('/qst start')
         end
 
         if not Entity.Target and not Addons.GetAddon("TelepotTown").Ready then
+            yield("/vbm ai off")
+            yield("/vbm ar clear")
             yield("/send NUMPAD0")
             yield("/send NUMPAD0")
             yield("/send NUMPAD0") --General stuck trying to interact, idk if this is making aethernet stuck loops
@@ -531,11 +529,19 @@ while Addons.GetAddon("_DTR").Exists do
                 end
                 yield("/interact")
             end
+        elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
+
+            sleep(8.532)
+            if CheckPosStuck() then
+                yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
+                yield("/qst reload")
+                yield("/qst start")
+            end
         end
         positionHistory = {}
     end
 
-    -- StuckCheck() end
+    -- CheckPosStuck() end
 
 
     --[[General Battle NPC combat failing to start
