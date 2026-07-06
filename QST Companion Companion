@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.1.2
+version: 2.1.3
 triggers:
 - onlogin
 - onlogout
@@ -376,9 +376,11 @@ while Addons.GetAddon("_DTR").Exists do
                 sleep(1.426)
             until not IPC.vnavmesh.IsRunning() 
             MoveAndInteract("Baderon")
+            yield('/qst start')
         elseif TerritoryType() == 156 and qid == "1005" and IsPlayerCloseTo(-65.19908, 2.9204268, -634.66235) then
             yield("/qst stop")
             MoveAndInteract("Wedge")
+            yield('/qst start')
         elseif TerritoryType() == 156 and qid == "1005" and IPC.Questionable.GetCurrentStepData().InteractionType == "CompleteQuest" then --! this is no longer needed for me, needs testing
             yield("/qst stop")
             yield("/li dhona")
@@ -388,6 +390,7 @@ while Addons.GetAddon("_DTR").Exists do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
+            yield('/qst start')
         end
         while TerritoryType() == 134 and (qid == "462" or qid == "403") do --On to Summerford/relightting the torch(?)
             yield("/vnav moveto -52 33.3 164")
@@ -442,6 +445,7 @@ while Addons.GetAddon("_DTR").Exists do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
+            yield('/qst start')
         elseif TerritoryType() == 130 and IsPlayerCloseTo(-20.7, 10, -41) then --uldah landing pad
             yield("/qst stop")
             MoveAndInteract("Willahelm")
@@ -459,6 +463,7 @@ while Addons.GetAddon("_DTR").Exists do
             sleep(10.399)
             yield("/qst stop")
             MoveAndInteract("Flame Honor Guard")
+            yield('/qst start')
         elseif TerritoryType() == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then --gridania landing pad
             yield("/qst stop")
             MoveAndInteract("Lionnellais")
@@ -469,10 +474,12 @@ while Addons.GetAddon("_DTR").Exists do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
+            yield('/qst start')
         elseif IsPlayerCloseTo(-7.1, 40, -16) then --! idk what this is
             yield("/qst stop")
             IPC.vnavmesh.PathfindAndMoveTo(Vector3(13.7, 40, 70), false)
             sleep(10.016)
+            yield('/qst start')
         elseif TerritoryType() == 145 and IsPlayerCloseTo(314.7, 23.3, -256.23) and Entity.Target and Entity.Target.Name == "Destination" then --!some quest i should specify
             yield("/qst stop")
             yield("/vbm ai off")
@@ -483,6 +490,7 @@ while Addons.GetAddon("_DTR").Exists do
                 sleep(1.017)
                 counter_destination_interact = counter_destination_interact + 1
             end
+            yield('/qst start')
         end
 
         if not Entity.Target and not Addons.GetAddon("TelepotTown").Ready then
