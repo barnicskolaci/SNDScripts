@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.0.4
+version: 2.0.5
 triggers:
 - onlogin
 - onlogout
@@ -247,12 +247,6 @@ while Addons.GetAddon("_DTR").Exists do
         end
         sleep(1.9)
         yield("/autoduty run support 1042 1 false") --stone vigil
-    elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --duties MUST be excluded, qst reload reloads path
-        if debug then
-            yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
-        end
-        yield('/qst reload')
-        yield('/qst start')
     end
     if Entity.Player and not Entity.Player.IsInCombat then
         yield('/vbm ai off')
@@ -313,9 +307,23 @@ while Addons.GetAddon("_DTR").Exists do
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Teleport error detected and handled.")
             end
-        end
-
-        if ferry_error == true then --! looks unnecessary now
+        elseif ferry_error == true then --! looks unnecessary now
+            yield("/return")
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+            sleep(1)
+            if Entity.Player and Entity.Player.IsCasting then
+                ferry_error = false
+            else
+              yield("/li limsa")
+              ferry_error = false
+            end
+            if debug then
+                yield("/echo [QST Comp Comp] Debug: Ferry error detected and handled.")
+            end
+        elseif Svc.ClientState.TerritoryType == 128 and Entity.Player and Entity.Player.Position.Y > 90 then --stuck in landing pad
             yield("/return")
             yield('/waitaddon "SelectYesno"')
             if Addons.GetAddon("SelectYesno").Ready then
@@ -333,24 +341,7 @@ while Addons.GetAddon("_DTR").Exists do
             end
         end
 
-        if Svc.ClientState.TerritoryType == 128 and Entity.Player and Entity.Player.Position.Y > 90 then --stuck in landing pad
-            yield("/return")
-            yield('/waitaddon "SelectYesno"')
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
-            sleep(1)
-            if Entity.Player and Entity.Player.IsCasting then
-                ferry_error = false
-            else
-              yield("/li limsa")
-              ferry_error = false
-            end
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Ferry error detected and handled.")
-            end
-        end
-
+        --quest-related stuck checks
         local qid = IPC.Questionable.GetCurrentQuestId()
         if qid == "466" or qid == "621" or qid == "618" then -- getting stuck under darm dome and enemies not spawning
             yield('/send R')
@@ -390,16 +381,18 @@ while Addons.GetAddon("_DTR").Exists do
                 else
                     if IPC.Questionable.GetCurrentQuestId() == "545" and Svc.ClientState.TerritoryType ~= 177 then
                         yield("/li inn")
+                        while IPC.Lifestream.IsBusy() do
+                            sleep(1.016)
+                        end
                     end
                 end
             end
         end
 
+        --Territory-specific stuck checks
         if Svc.ClientState.TerritoryType == 138 then --vbm moving to sahagin territory in western la noscea
             yield("/vbm ai off")
-        end
-
-        if Svc.ClientState.TerritoryType == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then
+        elseif Svc.ClientState.TerritoryType == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then
             yield('/qst stop')
             MoveAndInteract("Lionnellais")
             if debug then
@@ -409,7 +402,7 @@ while Addons.GetAddon("_DTR").Exists do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
-        elseif IsPlayerCloseTo(-7.1, 40, -16) then
+        elseif IsPlayerCloseTo(-7.1, 40, -16) then --! idk what this is
             yield('/qst stop')
             IPC.vnavmesh.PathfindAndMoveTo(Vector3(13.7, 40, 70), false)
             sleep(10.016)
@@ -450,8 +443,13 @@ while Addons.GetAddon("_DTR").Exists do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
+        elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --duties MUST be excluded, qst reload reloads path
+            if debug then
+                yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
+            end
+            yield('/qst reload')
+            yield('/qst start')
         end
-
 
         if not Entity.Target and not Addons.GetAddon("TelepotTown").Ready then
             yield('/send NUMPAD0')
