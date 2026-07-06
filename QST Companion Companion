@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.1.3
+version: 2.1.4
 triggers:
 - onlogin
 - onlogout
@@ -494,11 +494,7 @@ while Addons.GetAddon("_DTR").Exists do
         end
 
         if not Entity.Target and not Addons.GetAddon("TelepotTown").Ready then
-            yield("/vbm ai off")
-            yield("/vbm ar clear")
-            yield("/send NUMPAD0")
-            yield("/send NUMPAD0")
-            yield("/send NUMPAD0") --General stuck trying to interact, idk if this is making aethernet stuck loops
+            --!idk 
         elseif Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Stuck on aetheryte, attempting to let QST Companion handle it.")
@@ -538,7 +534,12 @@ while Addons.GetAddon("_DTR").Exists do
                 yield("/interact")
             end
         elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
-
+            yield("/vbm ai off")
+            yield("/vbm ar clear")
+            yield("/qst stop")
+            yield("/send NUMPAD0")
+            yield("/send NUMPAD0")
+            yield("/send NUMPAD0")
             sleep(8.532)
             if CheckPosStuck() then
                 yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
