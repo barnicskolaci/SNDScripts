@@ -1,0 +1,17 @@
+
+        elseif ferry_error == true then --! looks unnecessary now
+            yield("/return")
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+            sleep(1)
+            if Entity.Player and Entity.Player.IsCasting then
+                ferry_error = false
+            else
+              yield("/li limsa")
+              ferry_error = false
+            end
+            if debug then
+                yield("/echo [QST Comp Comp] Debug: Ferry error detected and handled.")
+            end
