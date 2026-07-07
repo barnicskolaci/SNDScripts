@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.1
+version: 2.2.2
 triggers:
 - onlogin
 - onlogout
