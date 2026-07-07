@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2
+version: 2.2.1
 triggers:
 - onlogin
 - onlogout
@@ -257,8 +257,6 @@ function MatchHuntObjective(text)
     return nil
 end
 
-local hunt_target = MatchHuntObjective(QuestText())
-
 --[[#########################################
 ###########  SCRIPT START  ##################
 ###########################################]]
@@ -266,15 +264,8 @@ local hunt_target = MatchHuntObjective(QuestText())
 yield("/dps wloadall") --this is for Dhog Potato System window placement
 
 while Addons.GetAddon("_DTR").Exists do
+    local hunt_target = MatchHuntObjective(QuestText())
         -- Overworld mob hunting
-    local counter_qid_343 = 0
-    repeat
-        sleep(1.267)
-        counter_qid_343 = counter_qid_343 + 1
-        if QuestText() == "Speak with the flame sergeant." and Entity.Player and Player.IsCasting then --lord of the inferno avoid tp=ing away
-            MoveAndInteract("Flame Sergeant")
-        end
-    until counter_qid_343 >= 4
     if Player.Job.Level and Player.Job.Level >= stoplevel then
         while not Entity.Player or not Player.Available do
             yield("/send ESCAPE")
@@ -300,18 +291,16 @@ while Addons.GetAddon("_DTR").Exists do
     elseif TerritoryType() == 1042 and IPC.AutoDuty.IsStopped() then
         yield("/ad start")
     end
-    sleep(5.1) --wait between cycles
-    if hunt_target then --!just end if here, do the commands later
-        if debug then
-            yield("/echo [QST Comp Comp] Debug: Hunt objective detected, targeting " .. hunt_target)
+    local counter_qid_343 = 0
+    repeat --cycle wait replacement with check for qid 343
+        sleep(1.267)
+        counter_qid_343 = counter_qid_343 + 1
+        if QuestText() == "Speak with the flame sergeant." and Entity.Player and Player.IsCasting then --lord of the inferno avoid tp=ing away
+            MoveAndInteract("Flame Sergeant")
         end
-        yield("/vbm ai on")
-        yield("/rsr manual")
-        yield('/target "' .. hunt_target .. '"')
-        if Entity.Target and Entity.Target.Name == hunt_target then
-            yield("/vnav movetarget")
-        end
-    elseif Entity.Player and not Entity.Player.IsInCombat and not Questthen
+    until counter_qid_343 >= 4
+    if hunt_target then
+    elseif Entity.Player and not Entity.Player.IsInCombat and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
@@ -546,9 +535,7 @@ while Addons.GetAddon("_DTR").Exists do
             yield('/qst start')
         end
 
-        if not Entity.Target and not Addons.GetAddon("TelepotTown").Ready then
-            --!idk 
-        elseif Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
+        if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Stuck on aetheryte, attempting to let QST Companion handle it.")
             end
@@ -587,6 +574,16 @@ while Addons.GetAddon("_DTR").Exists do
                 end
                 yield("/interact")
             end]]
+        elseif hunt_target then --!just end if here, do the commands later
+            if debug then
+                yield("/echo [QST Comp Comp] Debug: Hunt objective detected, targeting " .. hunt_target)
+            end
+            yield("/vbm ai on")
+            yield("/rsr manual")
+            yield('/target "' .. hunt_target .. '"')
+            if Entity.Target and Entity.Target.Name == hunt_target then
+                yield("/vnav movetarget")
+            end
         elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
             yield("/vbm ai off")
             yield("/vbm ar clear")
@@ -642,7 +639,7 @@ while Addons.GetAddon("_DTR").Exists do
         while (Svc.Condition[56] or Svc.Condition[34]) and not IPC.Lifestream.IsBusy() do
             HardTarget()
             sleep(2.025)
-            yield("/vbm ai off")
+            --yield("/vbm ai off")
             yield('/rsr auto lowhp')
             yield('/target "drowned outranger"') --feint and strike
             yield('/target "draconian rosary"') --in the eyes of gods and men
