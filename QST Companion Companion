@@ -1,9 +1,8 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.2
+version: 2.2.2.1
 triggers:
 - onlogin
-- onlogout
 - onterritorychange
 function_chat_filters:
   OnChatMessage:
