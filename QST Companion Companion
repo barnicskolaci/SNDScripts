@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.1.4
+version: 2.1.5
 triggers:
 - onlogin
 - onlogout
@@ -16,9 +16,6 @@ function_chat_filters:
     message_contains: This ferry will become available upon reaching level 15.
 [[End Metadata]]
 --]=====]
-
--- needs https://github.com/xa-io/ffxiv-tools/blob/main/snd/xafunc.lua
--- and https://github.com/McVaxius/dhogsbreakfeast/blob/main/dfunc.lua
 
 import("System.Numerics")
 
@@ -262,7 +259,7 @@ while Addons.GetAddon("_DTR").Exists do
                 sleep(0.9)
             end
         end
-    elseif IPC.Questionable.IsQuestComplete("941") and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --sanctuary
+    elseif IPC.Questionable.IsQuestComplete("941") and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --not in duty
         yield("/qst stop")
         if not IsInSanctuary() and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
             yield("/li limsa")
@@ -272,6 +269,8 @@ while Addons.GetAddon("_DTR").Exists do
         end
         sleep(1.9)
         yield("/autoduty run support 1042 1 false") --stone vigil
+    elseif TerritoryType() == 1042 and IPC.AutoDuty.IsStopped() then
+        yield("/ad start")
     end
     sleep(5.1) --wait between cycles
     if Entity.Player and not Entity.Player.IsInCombat then
@@ -390,6 +389,22 @@ while Addons.GetAddon("_DTR").Exists do
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
+            yield('/qst start')
+        elseif qid == "343" and TerritoryType() == 146 and IsPlayerCloseTo(-63.111206, 5.673375, -554.7956) then --cooked quest path in lord of the inferno
+            yield("/qst stop")
+            yield("/li drybone")
+            local counter = 0
+            while TerritoryType() == 146 and counter < 10 do
+                sleep(1.398)
+                counter = counter + 1
+            end
+            sleep(3.399)
+            MoveAndInteract("Adala")
+            yield('/waitaddon "SelectYesno"')
+            if Addons.GetAddon("SelectYesno").Ready then
+                yield("/click SelectYesno Yes")
+            end
+            sleep(1.409)
             yield('/qst start')
         end
         while TerritoryType() == 134 and (qid == "462" or qid == "403") do --On to Summerford/relightting the torch(?)
