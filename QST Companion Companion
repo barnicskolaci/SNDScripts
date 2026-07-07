@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.1.5
+version: 2.2
 triggers:
 - onlogin
 - onlogout
@@ -100,8 +100,8 @@ function CheckPosStuck()
     
     local currentPos = Entity.Player.Position
     
-    -- Handle nil position
-    if currentPos == nil then
+    -- Handle nil position and combat/casting states
+    if currentPos == nil or not Player.Available or Entity.Player.IsInCombat or Entity.Player.IsCasting then --i really hope nothing will periodically trigger these while the toon is still stuck
         positionHistory = {}
         return false
     end
@@ -129,7 +129,7 @@ function CheckPosStuck()
         local pos3 = positionHistory[3]
         
         -- Compare Vector3 objects directly
-        if CloseCheck(pos1, pos2, 2) and CloseCheck(pos2, pos3, 2) and Entity.Player and not Entity.Player.IsInCombat and not Entity.Player.IsCasting and Player.Available then
+        if CloseCheck(pos1, pos2, 2) and CloseCheck(pos2, pos3, 2) then
             yield("/echo Player is not moving anywhere.")
             return true
         end
@@ -241,12 +241,40 @@ function HardTarget()
 end
 
 
+hunt_objective_targets = {
+    ["Slay coeurl pups and collect coeurl pup whiskers."] = "Coeurl Pup",
+    ["Slay antelope stags for their horns."] = "Antelope Stag",
+    ["Slay ziz."] = "Ziz",
+    ["Slay ice sprites and obtain their cores."] = "Ice Sprite",
+}
 
---[[Script start]]
+function MatchHuntObjective(text)
+    for prefix, creature in pairs(hunt_objective_targets) do
+        if text:sub(1, #prefix) == prefix then
+            return creature
+        end
+    end
+    return nil
+end
+
+local hunt_target = MatchHuntObjective(QuestText())
+
+--[[#########################################
+###########  SCRIPT START  ##################
+###########################################]]
 
 yield("/dps wloadall") --this is for Dhog Potato System window placement
-sleep(5.01)--little time buffer
+
 while Addons.GetAddon("_DTR").Exists do
+        -- Overworld mob hunting
+    local counter_qid_343 = 0
+    repeat
+        sleep(1.267)
+        counter_qid_343 = counter_qid_343 + 1
+        if QuestText() == "Speak with the flame sergeant." and Entity.Player and Player.IsCasting then --lord of the inferno avoid tp=ing away
+            MoveAndInteract("Flame Sergeant")
+        end
+    until counter_qid_343 >= 4
     if Player.Job.Level and Player.Job.Level >= stoplevel then
         while not Entity.Player or not Player.Available do
             yield("/send ESCAPE")
@@ -273,7 +301,17 @@ while Addons.GetAddon("_DTR").Exists do
         yield("/ad start")
     end
     sleep(5.1) --wait between cycles
-    if Entity.Player and not Entity.Player.IsInCombat then
+    if hunt_target then --!just end if here, do the commands later
+        if debug then
+            yield("/echo [QST Comp Comp] Debug: Hunt objective detected, targeting " .. hunt_target)
+        end
+        yield("/vbm ai on")
+        yield("/rsr manual")
+        yield('/target "' .. hunt_target .. '"')
+        if Entity.Target and Entity.Target.Name == hunt_target then
+            yield("/vnav movetarget")
+        end
+    elseif Entity.Player and not Entity.Player.IsInCombat and not Questthen
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
@@ -390,7 +428,7 @@ while Addons.GetAddon("_DTR").Exists do
                 yield("/click SelectYesno Yes")
             end
             yield('/qst start')
-        elseif qid == "343" and TerritoryType() == 146 and IsPlayerCloseTo(-63.111206, 5.673375, -554.7956) then --cooked quest path in lord of the inferno
+        elseif qid == "343" and TerritoryType() == 146 and IsPlayerCloseTo(-63.111206, 5.673375, -554.7956) then --cooked quest path in lord of the inferno, handle if already tp-d away
             yield("/qst stop")
             yield("/li drybone")
             local counter = 0
@@ -524,7 +562,8 @@ while Addons.GetAddon("_DTR").Exists do
                 end
                 yield("/interact")
             end
-        elseif Entity.Target and targetName and Entity.Target.Name == targetName then --!this just never seems to trigger, idk why, plus idk if it's even needed
+        --this shit never worked and i just want it to do stuff, so replacing the big brain idea to never do general interact if you have a target with just general interact. fingers crossed
+        --[[elseif Entity.Target and targetName and Entity.Target.Name == targetName then --!this just never seems to trigger, idk why, plus idk if it's even needed
             interactioncount = interactioncount + 1
             if debug then
                 yield("/echo [QST Comp Comp] Debug: trying to interact with " .. targetName .. " " .. tostring(interactioncount + 1) .. " times.")
@@ -547,7 +586,7 @@ while Addons.GetAddon("_DTR").Exists do
                     yield("/echo [QST Comp Comp] Debug: Target name set to " .. targetName)
                 end
                 yield("/interact")
-            end
+            end]]
         elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
             yield("/vbm ai off")
             yield("/vbm ar clear")
@@ -568,7 +607,8 @@ while Addons.GetAddon("_DTR").Exists do
     -- CheckPosStuck() end
 
 
-    --[[General Battle NPC combat failing to start
+    --General Battle NPC combat failing to start --idk why i took this out, looks useful if health never goes below QSTC trigger value
+    --[[maybe it's to stop it from getting stuck fighting when unrelated mobs aggro, idk
     if Entity.Player and Entity.Player.IsInCombat and not Entity.Target then
         HardTarget()
     end
@@ -616,6 +656,7 @@ while Addons.GetAddon("_DTR").Exists do
         end
         yield('/vbm cfg aiconfig forbidactions true')
     end
+
     --[[if IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") and Entity.Target and Entity.Target.Name  == "Swygskyf" then --!update coords, leve handler
         if debug then
             yield("/echo [QST Comp Comp] Debug: Attempting leve.")
