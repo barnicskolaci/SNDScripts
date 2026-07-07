@@ -691,15 +691,3 @@ while Addons.GetAddon("_DTR").Exists do
         MoveAndInteract("Swygskyf")
     end]]
 end
-while not Addons.GetAddon("_DTR").Exists do -- prevent stuck on charaselect
-    sleep(10.037)
-    if Addons.GetAddon("CharaSelect").Exists and not Addons.GetAddon("SelectOK").Exists then
-        sleep(10.038)
-        if Addons.GetAddon("CharaSelect").Exists and not Addons.GetAddon("SelectOK").Exists then --!could be replaced with a callback
-            yield('/send DECIMAL')
-            yield('/send DECIMAL')
-            sleep(1.039)
-            yield('/send NUMPAD0')
-        end
-    end
-end
