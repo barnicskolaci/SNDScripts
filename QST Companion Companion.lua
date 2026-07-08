@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.8.1
+version: 2.2.9
 triggers:
 - onlogin
 - onterritorychange
@@ -288,7 +288,7 @@ while Addons.GetAddon("_DTR").Exists do
                 sleep(0.9)
             end
         end
-    elseif IPC.Questionable.IsQuestComplete("941") and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --not in duty
+    elseif IPC.Questionable.IsQuestComplete("952") and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then --done pursuit of the past and is not in duty
         yield("/qst stop")
         if not IsInSanctuary() and not IPC.Lifestream.IsBusy() and not (Entity.Player and Entity.Player.IsCasting) then--not in sanctuary as per moon icon, and not already mid-teleport
             yield("/li limsa")
