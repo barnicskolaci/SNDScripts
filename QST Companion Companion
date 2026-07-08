@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.7
+version: 2.2.8
 triggers:
 - onlogin
 - onterritorychange
@@ -169,7 +169,7 @@ local addonConfigs = {
     { addon = "TelepotTown", command = function() yield("/send ESCAPE") end }, --this might be fine, but needs testing; needs attention
     { addon = "Shop" }, --Dressed to Call: stuck on Buyback tab of shop
     { addon = "SelectYesno", condition = tp_error == false and function() return not IPC.Lifestream.IsBusy() end },
-    { addon = "SelectString", command = function() yield("/send ESCAPE") end },
+    { addon = "SelectString" },
     { addon = "JournalAccept" }, --qst stuck on war quest waiting to equip soul crystal
     { addon = "JournalResult", command = function() yield("/click JournalResult Decline") end },
     { addon = "JournalRewardItem" },
@@ -194,10 +194,10 @@ function AddonHandler(addonConfigs)
         end
 
         local attempts = 0
-        local maxAttempts = config.maxAttempts or 6.002
-        local waitBetween = config.waitBetween or 1.002
+        local maxAttempts = config.maxAttempts or 3
+        local waitBetween = config.waitBetween or 1.198
 
-        while Addons.GetAddon(Addon).Exists and attempts < maxAttempts do
+        while Addons.GetAddon(Addon).Ready and attempts < maxAttempts do
             if config.command then
                 config.command()
                 if debug then
@@ -207,10 +207,6 @@ function AddonHandler(addonConfigs)
                 if Addons.GetAddon(Addon).Ready then
                     -- Prefer callback when addon GUI is ready
                     yield('/callback "'.. Addon ..'" true -1')
-                else
-                    -- Fallback: try to close with keys
-                    yield('/send ESCAPE')
-                    yield('/send DECIMAL')
                 end
                 if debug then
                     yield("/echo [QST Comp Comp] Debug: Handling addon: " .. Addon .. " (attempt " .. tostring(attempts+1) .. ")")
@@ -221,10 +217,12 @@ function AddonHandler(addonConfigs)
             sleep(waitBetween)
         end
 
-        if debug and Addons.GetAddon(Addon).Exists then
+        if debug and Addons.GetAddon(Addon).Ready then
             yield("/echo [QST Comp Comp] Warning: addon '" .. Addon .. "' still exists after " .. tostring(attempts) .. " attempts")
+            -- Fallback: try to close with keys
+            yield('/send ESCAPE')
+            yield('/send DECIMAL')
         end
-
         ::skip_addon::
     end
 end
