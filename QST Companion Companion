@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.5.1
+version: 2.2.6
 triggers:
 - onlogin
 - onterritorychange
@@ -222,7 +222,7 @@ function HardTarget()
     if debug then
         yield("/echo [QST Comp Comp] Debug: HardTarget function called.")
     end
-    if not Svc.Targets.Target or Svc.Targets.Target:IsHostile() == false then --this is like this because or evaluates both and gives an error :) might make prettier later
+    if not Player.Entity.Target or not Svc.Targets.Target or Svc.Targets.Target:IsHostile() == false then
         if debug then
             yield("/echo [QST Comp Comp] Debug: Checking conditions for HardTarget.")
         end
@@ -233,9 +233,9 @@ function HardTarget()
     sleep(1.005)
 
     if (Svc.Condition[56] or Svc.Condition[34]) and Player.Entity.Target then
-      if (Svc.Targets.Target:IsHostile() == true) or (tostring(Player.Entity.Target.Type):match("^EventObj")) then
-        yield('/vnav movetarget')
-      end
+        if (Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true) or (tostring(Player.Entity.Target.Type):match("^EventObj")) then
+            yield('/vnav movetarget')
+        end
     end
 end
 
@@ -297,6 +297,13 @@ while Addons.GetAddon("_DTR").Exists do
         if QuestText() == "Speak with the flame sergeant." and Entity.Player and Player.IsCasting then --lord of the inferno avoid tp=ing away
             MoveAndInteract("Flame Sergeant")
         end
+        if (Svc.Condition[34] or Svc.Condition[56]) then
+            if Svc.Condition[26] then
+                yield('/vbm cfg aiconfig ForbidMovement False')
+            else
+                yield('/vbm cfg aiconfig ForbidMovement True')
+            end
+        end
     until counter_qid_343 >= 4
     if hunt_target then
     elseif Entity.Player and not Entity.Player.IsInCombat and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then
@@ -304,52 +311,6 @@ while Addons.GetAddon("_DTR").Exists do
         yield('/vbm cfg aiconfig forbidactions true')
     end
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
-        AddonHandler({
-            {
-        addon = "TelepotTown",--this might be fine, but needs testing
-        command = function()
-                yield("/send ESCAPE") --needs attention
-        end
-            },
-            {
-        addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
-            },
-            {
-        addon = "SelectYesno",
-        condition = tp_error == false and function() return not IPC.Lifestream.IsBusy() end,
-            },
-            {
-        addon = "SelectString",
-        command = function()
-            yield("/send ESCAPE")
-        end
-            },
-            {
-        addon = "JournalAccept",--qst stuck on war quest waiting to equip soul crystal
-            },
-            {
-        addon = "JournalResult",
-        command = function()
-            yield("/click JournalResult Decline")
-        end
-            },
-            {
-        addon = "JournalRewardItem",
-            },
-            {
-        addon = "GrandCompanySupplyList",
-            },
-            {
-        addon = "Description",--stuck on frontline info
-            },
-            {
-        addon = "Repair",        
-            },
-            {
-        addon = "GrandCompanyExchange",--stuck on GC exchange
-            }
-          })
-
         if tp_error == true then
             yield("/return")
             yield('/waitaddon "SelectYesno"')
@@ -536,6 +497,54 @@ while Addons.GetAddon("_DTR").Exists do
             end
             yield('/qst start')
         end
+        
+        --Addon handling for various stuck scenarios
+        --this is before qst reload but after the wait to give time for qst to not get stuck again
+        AddonHandler({
+            {
+        addon = "TelepotTown",--this might be fine, but needs testing
+        command = function()
+                yield("/send ESCAPE") --needs attention
+        end
+            },
+            {
+        addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
+            },
+            {
+        addon = "SelectYesno",
+        condition = tp_error == false and function() return not IPC.Lifestream.IsBusy() end,
+            },
+            {
+        addon = "SelectString",
+        command = function()
+            yield("/send ESCAPE")
+        end
+            },
+            {
+        addon = "JournalAccept",--qst stuck on war quest waiting to equip soul crystal
+            },
+            {
+        addon = "JournalResult",
+        command = function()
+            yield("/click JournalResult Decline")
+        end
+            },
+            {
+        addon = "JournalRewardItem",
+            },
+            {
+        addon = "GrandCompanySupplyList",
+            },
+            {
+        addon = "Description",--stuck on frontline info
+            },
+            {
+        addon = "Repair",        
+            },
+            {
+        addon = "GrandCompanyExchange",--stuck on GC exchange
+            }
+          })
 
         if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
             if debug then
