@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.3
+version: 2.2.4
 triggers:
 - onlogin
 - onterritorychange
@@ -232,8 +232,8 @@ function HardTarget()
     yield('/send NUMPAD0')
     sleep(1.005)
 
-    if Svc.Condition[56] or Svc.Condition[34] then
-      if (Svc.Targets.Target and Svc.Targets.Target:IsHostile() == true) or (Svc.Targets.Target and tostring(Svc.Targets.Target.Type):match("^EventObj") )then
+    if (Svc.Condition[56] or Svc.Condition[34]) and Player.Entity.Target then
+      if (Svc.Targets.Target:IsHostile() == true) or (tostring(Player.Entity.Target.Type):match("^EventObj")) then
         yield('/vnav movetarget')
       end
     end
