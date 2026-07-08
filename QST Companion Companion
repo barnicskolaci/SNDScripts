@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.6
+version: 2.2.7
 triggers:
 - onlogin
 - onterritorychange
@@ -164,6 +164,20 @@ function MoveAndInteract(target)
         yield('/interact')
     end
 end
+
+local addonConfigs = {
+    { addon = "TelepotTown", command = function() yield("/send ESCAPE") end }, --this might be fine, but needs testing; needs attention
+    { addon = "Shop" }, --Dressed to Call: stuck on Buyback tab of shop
+    { addon = "SelectYesno", condition = tp_error == false and function() return not IPC.Lifestream.IsBusy() end },
+    { addon = "SelectString", command = function() yield("/send ESCAPE") end },
+    { addon = "JournalAccept" }, --qst stuck on war quest waiting to equip soul crystal
+    { addon = "JournalResult", command = function() yield("/click JournalResult Decline") end },
+    { addon = "JournalRewardItem" },
+    { addon = "GrandCompanySupplyList" },
+    { addon = "Description" }, --stuck on frontline info
+    { addon = "Repair" },
+    { addon = "GrandCompanyExchange" } --stuck on GC exchange
+}
 
 function AddonHandler(addonConfigs)
     for _, config in ipairs(addonConfigs) do
@@ -500,51 +514,8 @@ while Addons.GetAddon("_DTR").Exists do
         
         --Addon handling for various stuck scenarios
         --this is before qst reload but after the wait to give time for qst to not get stuck again
-        AddonHandler({
-            {
-        addon = "TelepotTown",--this might be fine, but needs testing
-        command = function()
-                yield("/send ESCAPE") --needs attention
-        end
-            },
-            {
-        addon = "Shop",    --Dressed to Call: stuck on Buyback tab of shop
-            },
-            {
-        addon = "SelectYesno",
-        condition = tp_error == false and function() return not IPC.Lifestream.IsBusy() end,
-            },
-            {
-        addon = "SelectString",
-        command = function()
-            yield("/send ESCAPE")
-        end
-            },
-            {
-        addon = "JournalAccept",--qst stuck on war quest waiting to equip soul crystal
-            },
-            {
-        addon = "JournalResult",
-        command = function()
-            yield("/click JournalResult Decline")
-        end
-            },
-            {
-        addon = "JournalRewardItem",
-            },
-            {
-        addon = "GrandCompanySupplyList",
-            },
-            {
-        addon = "Description",--stuck on frontline info
-            },
-            {
-        addon = "Repair",        
-            },
-            {
-        addon = "GrandCompanyExchange",--stuck on GC exchange
-            }
-          })
+
+        AddonHandler(addonConfigs)
 
         if Entity.Target and tostring(Entity.Target.Type):match("^Aetheryte") and not IPC.Lifestream.IsBusy() then
             if debug then
@@ -611,6 +582,7 @@ while Addons.GetAddon("_DTR").Exists do
                 yield("/qst start")
             end
         end
+        AddonHandler(addonConfigs)
         positionHistory = {}
     end
 
