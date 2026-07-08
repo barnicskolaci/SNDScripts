@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.5
+version: 2.2.5.1
 triggers:
 - onlogin
 - onterritorychange
@@ -588,14 +588,6 @@ while Addons.GetAddon("_DTR").Exists do
             end
         elseif Svc.Condition[34] and Svc.Condition[56] and IPC.AutoDuty.IsStopped() then --idk what this does in solo duties, hope nothing bad
             yield("/ad start")
-            HardTarget()
-            sleep(2.025)
-            yield("/vbm ai on")
-            yield('/rsr auto lowhp')
-           if Entity.Target and Entity.Target.Name == "Wyvern" then --may need stg else
-                yield('/send TAB')
-                sleep(1.027)
-            end
         elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
             yield("/vbm ai off")
             yield("/vbm ar clear")
@@ -645,7 +637,7 @@ while Addons.GetAddon("_DTR").Exists do
         }
     })]]
 
-    --Solo duties 
+    --Solo duties and what have you
     local zones = { [249]=true, [280]=true, [274]=true, [307]=true, [330]=true, [278]=true, [301]=true, [263]=true, [305]=true } --castrum centri 305?
     if zones[Svc.ClientState.TerritoryType] then
         while (Svc.Condition[56] or Svc.Condition[34]) and not IPC.Lifestream.IsBusy() do
@@ -664,6 +656,11 @@ while Addons.GetAddon("_DTR").Exists do
             end
         end
         yield('/vbm cfg aiconfig forbidactions true')
+    elseif (Svc.Condition[56] or Svc.Condition[34]) then
+        HardTarget()
+        sleep(1.661)
+        yield("/vbm ai on")
+        yield('/rsr auto lowhp')
     end
 
     --[[if IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") and Entity.Target and Entity.Target.Name  == "Swygskyf" then --!update coords, leve handler
