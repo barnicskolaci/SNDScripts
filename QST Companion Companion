@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.4
+version: 2.2.5
 triggers:
 - onlogin
 - onterritorychange
@@ -588,6 +588,14 @@ while Addons.GetAddon("_DTR").Exists do
             end
         elseif Svc.Condition[34] and Svc.Condition[56] and IPC.AutoDuty.IsStopped() then --idk what this does in solo duties, hope nothing bad
             yield("/ad start")
+            HardTarget()
+            sleep(2.025)
+            yield("/vbm ai on")
+            yield('/rsr auto lowhp')
+           if Entity.Target and Entity.Target.Name == "Wyvern" then --may need stg else
+                yield('/send TAB')
+                sleep(1.027)
+            end
         elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
             yield("/vbm ai off")
             yield("/vbm ar clear")
