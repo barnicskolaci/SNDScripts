@@ -176,7 +176,8 @@ local addonConfigs = {
     { addon = "GrandCompanySupplyList" },
     { addon = "Description" }, --stuck on frontline info
     { addon = "Repair" },
-    { addon = "GrandCompanyExchange" } --stuck on GC exchange
+    { addon = "GrandCompanyExchange" }, --stuck on GC exchange
+    { addon = "PvpWelcome"}
 }
 
 function AddonHandler(addonConfigs)
