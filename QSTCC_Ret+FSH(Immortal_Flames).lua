@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.1
+version: 1.2.2
 triggers:
 - onlogin
 - onterritorychange
@@ -444,12 +444,16 @@ while Addons.GetAddon("_DTR").Exists do
                     yield("/e [QSTCC_Ret+FSH(Immortal_FLames)]: Swiftperch battle leve started.")
                 end
                 StartGuildLeveFromToDoList("Report to")
-                sleep(1)
-                yield("/target crab")
-                yield("/rsr manual")
+                sleep(0.447)
+                while not (Entity.Player and Entity.Player.IsInCombat) do
+                    sleep(1.450)
+                    yield("/target crab")
+                    yield("/rsr manual")
+                    yield("/vnav movetarget")
+                end
                 sleep(1)
                 while Entity.Player and Entity.Player.IsInCombat do
-                    sleep(1)
+                    sleep(1.455)
                 end
                 yield('/waitaddon "SelectYesno"')
                 if Addons.GetAddon("SelectYesno").Ready then
