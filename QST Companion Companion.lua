@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 2.2.9
+version: 2.3
 triggers:
 - onlogin
 - onterritorychange
@@ -369,18 +369,40 @@ while Addons.GetAddon("_DTR").Exists do
             end
         elseif qid == "889" then --! needs more specific instructions
             MoveAndInteract("Stolen Wares")
-        elseif (TerritoryType() == 129 or TerritoryType() == 128) and qid == "546" and QuestText() == "Speak with Baderon." then
+        elseif (TerritoryType() == 129 or TerritoryType() == 128) and qid == "546" and (QuestText() == "Speak with Baderon." or QuestText() == "Speak with the flame honor guard.") then
             yield("/qst stop")
             yield("/li The Aftcastle")
             while IPC.Lifestream.IsBusy() or not Entity.Player or not Player.Available do
                 sleep(0.444)
             end
             sleep(2.424)
-            yield('/vnav moveto 17.85372 40.21601 -4.443381')
-            repeat
-                sleep(1.426)
-            until not IPC.vnavmesh.IsRunning() 
-            MoveAndInteract("Baderon")
+            if QuestText() == "Speak with the flame honor guard." then
+                IPC.vnavmesh.PathfindAndMoveTo(Vector3(5.5, 39.9, 14.3), false)
+                repeat
+                    sleep(1.016)
+                until not IPC.vnavmesh.IsRunning()
+                MoveAndInteract("Skaenrael")
+                yield('/waitaddon "SelectIconString"')
+                if Addons.GetAddon("SelectIconString").Ready then
+                    yield("/callback SelectIconString true 0")
+                end    
+                yield('/waitaddon "SelectYesno"')
+                if Addons.GetAddon("SelectYesno").Ready then
+                    yield("/click SelectYesno Yes")
+                end
+                sleep(5)
+                MoveAndInteract("L'nophlo")
+                yield('/waitaddon "SelectYesno"')
+                if Addons.GetAddon("SelectYesno").Ready then
+                    yield("/click SelectYesno Yes")
+                end
+            else
+                yield('/vnav moveto 17.85372 40.21601 -4.443381')
+                repeat
+                    sleep(1.426)
+                until not IPC.vnavmesh.IsRunning() 
+                MoveAndInteract("Baderon")
+            end
         elseif TerritoryType() == 156 and qid == "1005" and IsPlayerCloseTo(-65.19908, 2.9204268, -634.66235) then
             yield("/qst stop")
             MoveAndInteract("Wedge")
@@ -452,32 +474,35 @@ while Addons.GetAddon("_DTR").Exists do
         elseif TerritoryType() == 128 and Entity.Target and Entity.Target.Name == "L'nophlo" then --limsa landing pad
             yield("/qst stop")
             if debug then
-                yield("/echo [QST Comp Comp] Debug: Interacting with L'nophlo.")
+                yield("/echo [QST Comp Comp] Debug: Interacting with Blanmhas.")
             end
             MoveAndInteract("Blanmhas")
-            yield('/waitaddon "SelectString"')
-            yield('/send NUMPAD0')
-            yield('/send NUMPAD0')
+            yield('/waitaddon "SelectIconString"')
+            if Addons.GetAddon("SelectIconString").Ready then
+                yield("/callback SelectIconString true 0")
+            end    
             yield('/waitaddon "SelectYesno"')
             if Addons.GetAddon("SelectYesno").Ready then
                 yield("/click SelectYesno Yes")
             end
-        elseif TerritoryType() == 130 and IsPlayerCloseTo(-20.7, 10, -41) then --uldah landing pad
-            yield("/qst stop")
-            MoveAndInteract("Willahelm")
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Interacting with Willahelm.")
+        elseif (TerritoryType() == 130 and IsPlayerCloseTo(-20.7, 10, -41)) or (qid == "546" and QuestText() == "Speak with the flame honor guard.") then --uldah landing pad
+            if IsPlayerCloseTo(-20.7, 10, -41) then
+                yield("/qst stop")
+                MoveAndInteract("Willahelm")
+                if debug then
+                    yield("/echo [QST Comp Comp] Debug: Interacting with Willahelm.")
+                end
+                yield('/waitaddon "SelectIconString"')
+                if Addons.GetAddon("SelectIconString").Ready then
+                    yield("/callback SelectIconString true 0")
+                end    
+                yield('/waitaddon "SelectYesno"')
+                if Addons.GetAddon("SelectYesno").Ready then
+                    yield("/click SelectYesno Yes")
+                end
+                sleep(10.399)
+                yield("/qst stop")
             end
-            yield('/waitaddon "SelectString"')
-            sleep(1.441)
-            yield('/send NUMPAD0')
-            yield('/send NUMPAD0')
-            yield('/waitaddon "SelectYesno"')
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
-            sleep(10.399)
-            yield("/qst stop")
             MoveAndInteract("Flame Honor Guard")
         elseif TerritoryType() == 132 and IsPlayerCloseTo(20.5, -19, 111.3) then --gridania landing pad
             yield("/qst stop")
@@ -550,7 +575,10 @@ while Addons.GetAddon("_DTR").Exists do
                 end
                 yield("/interact")
             end
-        else]]if hunt_target then
+        else]]
+        if Svc.Condition[34] and Svc.Condition[56] and IPC.AutoDuty.IsStopped() then --idk what this does in solo duties, hope nothing bad
+            yield("/ad start")
+        elseif hunt_target then
             if debug then
                 yield("/echo [QST Comp Comp] Debug: Hunt objective detected, targeting " .. hunt_target)
             end
@@ -559,9 +587,7 @@ while Addons.GetAddon("_DTR").Exists do
             yield('/target "' .. hunt_target .. '"')
             if Entity.Target and Entity.Target.Name == hunt_target then
                 yield("/vnav movetarget")
-            end
-        elseif Svc.Condition[34] and Svc.Condition[56] and IPC.AutoDuty.IsStopped() then --idk what this does in solo duties, hope nothing bad
-            yield("/ad start")
+            end        
         elseif not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
             yield("/vbm ai off")
             yield("/vbm ar clear")
