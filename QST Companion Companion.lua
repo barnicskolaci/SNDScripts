@@ -252,7 +252,7 @@ function HardTarget()
 end
 
 
-hunt_objective_targets = {
+local hunt_objective_targets = {
     ["Slay coeurl pups and collect coeurl pup whiskers."] = "Coeurl Pup",
     ["Slay antelope stags for their horns."] = "Antelope Stag",
     ["Slay ziz."] = "Ziz",

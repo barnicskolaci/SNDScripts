@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.1
+version: 1.2
 triggers:
 - onlogin
 - onterritorychange
@@ -308,6 +308,9 @@ function AddonHandler(addonConfigs)
             end
             yield('/send ESCAPE')
             yield('/send DECIMAL')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
+            yield('/send DECIMAL')
         end
         ::skip_addon::
     end
@@ -339,11 +342,7 @@ function HardTarget()
     end
 end
 
-hunt_objective_targets = {
-    ["Slay coeurl pups and collect coeurl pup whiskers."] = "Coeurl Pup",
-    ["Slay antelope stags for their horns."] = "Antelope Stag",
-    ["Slay ziz."] = "Ziz",
-    ["Slay ice sprites and obtain their cores."] = "Ice Sprite",
+local hunt_objective_targets = {
 }
 
 function MatchHuntObjective(text)
@@ -355,7 +354,8 @@ function MatchHuntObjective(text)
     return nil
 end
 
-local quests_needed = {"1433", "693", "696", "1134", "1107", "1108" }
+--MRD 1, 5, 10; Halatali, Pvp, Cutter's cry, Swiftperch and Costa Del Sol leves, FSH + Ocean Fishing quests
+local quests_needed = {"311", "313", "314", "697", "1106", "921", "693", "696", "1134", "1107", "1108", "3843" }
 
 --[[#########################################
 ###########  SCRIPT START  ##################
@@ -364,7 +364,12 @@ local quests_needed = {"1433", "693", "696", "1134", "1107", "1108" }
 if not debug then
     yield("/dps wloadall") --this is for Dhog Potato System window placement
 end
---IPC.Questionable.ImportQuestPriority(qst:priority:Njk3OzExMDY7OTIxOzY5MzsxMTM0)
+
+IPC.Questionable.ClearQuestPriority()
+for _, questId in ipairs(quests_needed) do
+    IPC.Questionable.AddQuestPriority(questId)
+end
+
 while Addons.GetAddon("_DTR").Exists do
     --local hunt_target = MatchHuntObjective(QuestText()) 
         -- Overworld mob hunting
@@ -388,10 +393,13 @@ while Addons.GetAddon("_DTR").Exists do
             end
         end
     until counter >= 4
-    if hunt_target then
-    elseif Entity.Player and not Entity.Player.IsInCombat and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then
+    --if hunt_target then
+    if Entity.Player and not Entity.Player.IsInCombat and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
+    end
+    if TerritoryType() == 1042 then --some start stone vigil for some reason
+        yield("/xa leaveduty")
     end
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
 
@@ -508,7 +516,7 @@ while Addons.GetAddon("_DTR").Exists do
                 end
             end
         end
-        if not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not Entity.Player.IsCasting and Player.Available then --pretty much hail merry attempt
+        if Entity.Player and not Entity.Player.IsCasting and Player.Available and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --pretty much hail merry attempt
             yield("/vbm ai off")
             yield("/vbm ar clear")
             yield('/vbm cfg aiconfig ForbidMovement True')
