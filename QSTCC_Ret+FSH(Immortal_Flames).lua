@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.2
+version: 1.2.3
 triggers:
 - onlogin
 - onterritorychange
@@ -428,28 +428,34 @@ while Addons.GetAddon("_DTR").Exists do
                 yield("/echo [QST Comp Comp] Debug: Attempting Swiftperch leve.")
             end
             if Entity.Target and Entity.Target.Name  == "Swygskyf" then
-                yield('/waitaddon "JournalDetail')
+                yield('/waitaddon "JournalDetail"')
                 if Addons.GetAddon("JournalDetail").Ready then
                     yield("/callback JournalDetail true 3 556")
-                    if Addons.GetAddon("Journal").Ready then
-                    end
                 end
                 IPC.vnavmesh.PathfindAndMoveTo(Vector3(604.7, 6.5, 482), false)
                 while IPC.vnavmesh.IsRunning() do
-                    sleep(1)
+                    sleep(1.437)
                 end
             end
             if FindToDoListRow("Report to") then
                 if debug then
                     yield("/e [QSTCC_Ret+FSH(Immortal_FLames)]: Swiftperch battle leve started.")
                 end
+                while IPC.vnavmesh.IsRunning() do
+                    sleep(1.445)
+                end
                 StartGuildLeveFromToDoList("Report to")
+                while IPC.vnavmesh.IsRunning() do
+                    sleep(1.449)
+                end
                 sleep(0.447)
-                while not (Entity.Player and Entity.Player.IsInCombat) do
+                local counter = 0
+                while not (Entity.Player and Entity.Player.IsInCombat) and counter < 20 do
                     sleep(1.450)
                     yield("/target crab")
                     yield("/rsr manual")
                     yield("/vnav movetarget")
+                    counter = counter + 1
                 end
                 sleep(1)
                 while Entity.Player and Entity.Player.IsInCombat do
