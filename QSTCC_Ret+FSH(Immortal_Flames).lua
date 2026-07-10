@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2
+version: 1.2.1
 triggers:
 - onlogin
 - onterritorychange
@@ -17,7 +17,7 @@ import("System.Numerics")
 local tp_error = false
 local interactioncount = 0
 local targetName = nil
-local debug = true
+local debug = false
 
 function TerritoryType()
     if Svc.ClientState.TerritoryType then
@@ -373,6 +373,9 @@ end
 while Addons.GetAddon("_DTR").Exists do
     --local hunt_target = MatchHuntObjective(QuestText()) 
         -- Overworld mob hunting
+    if Addons.GetAddon("PvpWelcome").Ready then
+        yield('/callback "PvpWelcome" true -1')
+    end
     if not IPC.Questionable.IsRunning() and not Svc.Condition[34] and not Svc.Condition[56] then
         AddonHandler(addonConfigs)
         sleep(0.306)
@@ -398,7 +401,7 @@ while Addons.GetAddon("_DTR").Exists do
         yield('/vbm ai off')
         yield('/vbm cfg aiconfig forbidactions true')
     end
-    if TerritoryType() == 1042 then --some start stone vigil for some reason
+    if TerritoryType() == 1042 then --some start stone vigil for some reason -- that reason was qstcc starting after being deleted. reload snd to fix
         yield("/xa leaveduty")
     end
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
