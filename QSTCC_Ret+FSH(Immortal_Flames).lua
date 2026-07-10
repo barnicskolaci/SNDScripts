@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.3
+version: 1.2.4
 triggers:
 - onlogin
 - onterritorychange
@@ -77,6 +77,8 @@ function TargetLeveObjectives()
         end
         yield("/target " .. name)
         sleep(0.2)
+        yield("/rsr manual")
+        yield("/vbm ai on")
     end
     return targets
 end
