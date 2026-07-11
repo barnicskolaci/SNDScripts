@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.4
+version: 1.2.5
 triggers:
 - onlogin
 - onterritorychange
@@ -321,6 +321,7 @@ end
 function HardTarget()
     yield('/vbm cfg aiconfig forbidactions false')
     sleep(0.103)
+    yield("/rsr manual")
     yield('/vbm ai on')
     if debug then
         yield("/echo [QST Comp Comp] Debug: HardTarget function called.")
@@ -407,7 +408,7 @@ while Addons.GetAddon("_DTR").Exists do
         yield("/xa leaveduty")
     end
     if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
-
+        local counter = 0
         --quest-related stuck checks
         local questId = IPC.Questionable.GetCurrentQuestId()
         if TerritoryType() == 128 and IsPlayerCloseTo(-12.4980955, 91.49984, -12.168484) then
@@ -435,23 +436,28 @@ while Addons.GetAddon("_DTR").Exists do
                     yield("/callback JournalDetail true 3 556")
                 end
                 IPC.vnavmesh.PathfindAndMoveTo(Vector3(604.7, 6.5, 482), false)
-                while IPC.vnavmesh.IsRunning() do
+                while IPC.vnavmesh.IsRunning() and counter < 20 do
                     sleep(1.437)
+                    counter = counter + 1
                 end
+                counter = 0
             end
             if FindToDoListRow("Report to") then
                 if debug then
                     yield("/e [QSTCC_Ret+FSH(Immortal_FLames)]: Swiftperch battle leve started.")
                 end
-                while IPC.vnavmesh.IsRunning() do
+                while IPC.vnavmesh.IsRunning() and counter < 20 do
                     sleep(1.445)
+                    counter = counter + 1
                 end
+                counter = 0
                 StartGuildLeveFromToDoList("Report to")
-                while IPC.vnavmesh.IsRunning() do
+                while IPC.vnavmesh.IsRunning() and counter < 20 do
                     sleep(1.449)
+                    counter = counter + 1
                 end
                 sleep(0.447)
-                local counter = 0
+                counter = 0
                 while not (Entity.Player and Entity.Player.IsInCombat) and counter < 20 do
                     sleep(1.450)
                     yield("/target crab")
@@ -460,9 +466,12 @@ while Addons.GetAddon("_DTR").Exists do
                     counter = counter + 1
                 end
                 sleep(1)
-                while Entity.Player and Entity.Player.IsInCombat do
+                counter = 0
+                while Entity.Player and Entity.Player.IsInCombat and counter < 20 do
                     sleep(1.455)
+                    counter = counter + 1
                 end
+                counter = 0
                 yield('/waitaddon "SelectYesno"')
                 if Addons.GetAddon("SelectYesno").Ready then
                     yield("/click SelectYesno Yes")
@@ -476,9 +485,11 @@ while Addons.GetAddon("_DTR").Exists do
                     yield("/callback JournalDetail true 3 629")
                 end
                 IPC.vnavmesh.PathfindAndMoveTo(Vector3(514.7, 9.7, 376.2), false)
-                while IPC.vnavmesh.IsRunning() do
-                    sleep(1)
+                while IPC.vnavmesh.IsRunning() and counter < 20 do
+                    sleep(1.488)
+                    counter = counter + 1
                 end
+                counter = 0
             elseif IsPlayerCloseTo(514.724, 9.702966, 376.21405) or Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then
                 if not Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then 
                     StartGuildLeveFromToDoList("Report to") --leve handler
