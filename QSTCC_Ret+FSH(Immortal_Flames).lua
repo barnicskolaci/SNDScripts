@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.5
+version: 1.2.6
 triggers:
 - onlogin
 - onterritorychange
@@ -411,7 +411,14 @@ while Addons.GetAddon("_DTR").Exists do
         local counter = 0
         --quest-related stuck checks
         local questId = IPC.Questionable.GetCurrentQuestId()
-        if TerritoryType() == 128 and IsPlayerCloseTo(-12.4980955, 91.49984, -12.168484) then
+        if questId == "313" and QuestText():find("Marauders' Guild.", 1, true) then
+            yield("/li Marauders")
+            while IPC.Lifestream.IsBusy() and counter < 20 do
+                sleep(1.417)
+                counter = counter + 1
+            end
+            counter = 0
+        elseif TerritoryType() == 128 and IsPlayerCloseTo(-12.4980955, 91.49984, -12.168484) then
             MoveAndInteract("Blanmhas")
             yield('/waitaddon "SelectString"')
             yield('/send NUMPAD0')
