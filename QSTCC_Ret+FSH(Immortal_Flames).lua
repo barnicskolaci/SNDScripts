@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.2.6.1
+version: 1.3
 triggers:
 - onlogin
 - onterritorychange
@@ -73,7 +73,7 @@ function TargetLeveObjectives()
     local targets = GetLeveObjectiveTargets()
     for _, name in ipairs(targets) do
         if debug then
-            yield("/echo [QST] Debug: Targeting leve objective \"" .. name .. "\"")
+            yield("/echo [QSTCC_Ret+FSH(I_F) Debug: Targeting leve objective \"" .. name .. "\"")
         end
         yield("/target " .. name)
         sleep(0.2)
@@ -91,7 +91,7 @@ function FindToDoListRow(matchText)
         local text = ToDoListRowText(rowId)
         if text ~= "" and text:lower():find(matchText, 1, true) then
             if debug then
-                yield("/echo [QST] Debug: Found ToDoList match \"" .. text .. "\" in row " .. tostring(i - 1))
+                yield("/echo [QSTCC_Ret+FSH(I_F) Debug: Found ToDoList match \"" .. text .. "\" in row " .. tostring(i - 1))
             end
             return i - 1
         end
@@ -101,7 +101,7 @@ end
 
 function ClickToDoListRow(rowIndex)
     if debug then
-        yield("/echo [QST] Debug: Clicking _ToDoList row " .. tostring(rowIndex))
+        yield("/echo [QSTCC_Ret+FSH(I_F) Debug: Clicking _ToDoList row " .. tostring(rowIndex))
     end
     yield('/callback _ToDoList true 7 ' .. rowIndex .. ' 0 74')
 end
@@ -113,7 +113,7 @@ function StartGuildLeveFromToDoList(matchText)
     local rowIndex = FindToDoListRow(matchText)
     if rowIndex == nil then
         if debug then
-            yield("/echo [QST] Debug: No ToDoList entry matched \"" .. matchText .. "\".")
+            yield("/echo [QSTCC_Ret+FSH(I_F) Debug: No ToDoList entry matched \"" .. matchText .. "\".")
         end
         return false
     end
@@ -145,7 +145,7 @@ function OnChatMessage()
     if tp_error == false then
         tp_error = true
         if debug then
-            Engines.Native.Run("/echo [QST] Debug: Teleport error detected.")
+            Engines.Native.Run("/echo [QSTCC_Ret+FSH(I_F) Debug: Teleport error detected.")
         end
     end
 end
@@ -163,11 +163,43 @@ function IsPlayerCloseTo(x, y, z, deltasquared) --delta is squared
     deltasquared = deltasquared or 4
     local result = CloseCheck(p, {X=x, Y=y, Z=z}, deltasquared)
     if debug then
-        yield("/echo [QST] Debug: Checking if player is close to (" .. x .. ", " .. y .. ", " .. z .. ") with delta^2 " .. deltasquared .. " - Result: " .. tostring(result))
+        yield("/echo [QSTCC_Ret+FSH(I_F) Debug: Checking if player is close to (" .. x .. ", " .. y .. ", " .. z .. ") with delta^2 " .. deltasquared .. " - Result: " .. tostring(result))
     end
     return result
 end
 
+function EquipRecommendedGear()
+    if debug then
+        yield("/echo [QSTCC_R+FSH(I_F)]: Equipping recommended gear.")
+    end
+    repeat
+        Sleep(0.1)
+    until Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[26]
+
+    repeat
+        yield("/character")
+        Sleep(0.1)
+    until Addons.GetAddon("Character").Ready
+
+    repeat
+        if Addons.GetAddon("Character").Ready then
+            yield("/callback Character true 12")
+        end
+        Sleep(0.1)
+    until Addons.GetAddon("RecommendEquip").Ready
+
+    repeat
+        yield("/character")
+        Sleep(0.1)
+    until not Addons.GetAddon("Character").Ready
+
+    repeat
+        if Addons.GetAddon("RecommendEquip").Ready then
+            yield("/callback RecommendEquip true 0")
+        end
+        Sleep(0.1)
+    until not Addons.GetAddon("RecommendEquip").Ready
+end
 
 -- Initialize position history
 
@@ -357,8 +389,78 @@ function MatchHuntObjective(text)
     return nil
 end
 
+function SwapJobFromArmoury(...)
+    local targetJobIds = {...}
+    if #targetJobIds == 0 then
+        yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: no job IDs given.")
+        return false
+    end
+
+    if not Player.Available or Player.Job == nil then
+        yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: Player.Job not available.")
+        return false
+    end
+
+    for _, jobId in ipairs(targetJobIds) do
+        if Player.Job.Id == jobId then
+            EquipRecommendedGear()
+            return true
+        end
+    end
+
+    local InventoryType = luanet.import_type("FFXIVClientStructs.FFXIV.Client.Game.InventoryType")
+    if InventoryType == nil then
+        yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: failed to resolve InventoryType.")
+        return false
+    end
+
+    local armoury = Inventory.ArmoryMainHand
+    if armoury == nil then
+        yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: armoury chest unavailable.")
+        return false
+    end
+
+    for i = 0, armoury.Count - 1 do
+        local item = armoury[i]
+        if item and not item.IsEmpty then
+            item:MoveItemSlotToSlot(InventoryType.EquippedItems, 0)
+            sleep(0.5)
+            if Player.Available and Player.Job then
+                for _, jobId in ipairs(targetJobIds) do
+                    if Player.Job.Id == jobId then
+                        EquipRecommendedGear()
+                        return true
+                    end
+                end
+            end
+        end
+    end
+
+    yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: no armoury item equipped the requested job.")
+    return false
+end
+
 --MRD 1, 5, 10; Halatali, Pvp, Cutter's cry, Swiftperch and Costa Del Sol leves, FSH + Ocean Fishing quests
 local quests_needed = {"311", "313", "314", "697", "1106", "921", "693", "696", "1134", "1107", "1108", "3843" }
+local completed_quests = {}
+
+-- Marks any not-yet-logged quest in quests_needed as complete if Questionable now reports it done.
+function UpdateCompletedQuests()
+    for _, questId in ipairs(quests_needed) do
+        if not completed_quests[questId] and IPC.Questionable.IsQuestComplete(questId) then
+            completed_quests[questId] = true
+        end
+    end
+end
+
+function AllQuestsComplete()
+    for _, questId in ipairs(quests_needed) do
+        if not completed_quests[questId] then
+            return false
+        end
+    end
+    return true
+end
 
 --[[#########################################
 ###########  SCRIPT START  ##################
@@ -373,200 +475,205 @@ for _, questId in ipairs(quests_needed) do
     IPC.Questionable.AddQuestPriority(questId)
 end
 
+UpdateCompletedQuests()
+local all_quests_complete = AllQuestsComplete()
+
 while Addons.GetAddon("_DTR").Exists do
-    --local hunt_target = MatchHuntObjective(QuestText()) 
-        -- Overworld mob hunting
-    if Addons.GetAddon("PvpWelcome").Ready then
-        yield('/callback "PvpWelcome" true -1')
-    end
-    if not IPC.Questionable.IsRunning() and not Svc.Condition[34] and not Svc.Condition[56] then
-        AddonHandler(addonConfigs)
-        sleep(0.306)
-        yield("/qst start")
-    end
-    local counter = 0
-    repeat --cycle wait replacement with check for questId
-        sleep(1.267)
-        counter = counter + 1
-        if QuestText() == "Speak with the flame sergeant." and Entity.Player and Player.IsCasting then --lord of the inferno avoid tp=ing away
-            MoveAndInteract("Flame Sergeant")
+    if not all_quests_complete then
+        UpdateCompletedQuests()
+        all_quests_complete = AllQuestsComplete()
+        --local hunt_target = MatchHuntObjective(QuestText())
+            -- Overworld mob hunting
+        if Addons.GetAddon("PvpWelcome").Ready then
+            yield('/callback "PvpWelcome" true -1')
         end
-        if (Svc.Condition[34] or Svc.Condition[56]) then
-            if Svc.Condition[26] then
-                yield('/vbm cfg aiconfig ForbidMovement False')
-            else
-                yield('/vbm cfg aiconfig ForbidMovement True')
-            end
+        if not IPC.Questionable.IsRunning() and not Svc.Condition[34] and not Svc.Condition[56] then
+            AddonHandler(addonConfigs)
+            sleep(0.306)
+            yield("/qst start")
         end
-    until counter >= 4
-    --if hunt_target then
-    if Entity.Player and not Entity.Player.IsInCombat and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then
-        yield('/vbm ai off')
-        yield('/vbm cfg aiconfig forbidactions true')
-    end
-    if TerritoryType() == 1042 then --some start stone vigil for some reason -- that reason was qstcc starting after being deleted. reload snd to fix
-        yield("/xa leaveduty")
-    end
-    if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
         local counter = 0
-        --quest-related stuck checks
-        local questId = IPC.Questionable.GetCurrentQuestId()
-        if questId == "311" and QuestText():find("Marauders' Guild.", 1, true) then
-            yield("/li Marauders")
-            while IPC.Lifestream.IsBusy() and counter < 20 do
-                sleep(1.417)
-                counter = counter + 1
-            end
-            counter = 0
-        elseif TerritoryType() == 128 and IsPlayerCloseTo(-12.4980955, 91.49984, -12.168484) then
-            MoveAndInteract("Blanmhas")
-            yield('/waitaddon "SelectString"')
-            yield('/send NUMPAD0')
-            yield('/send NUMPAD0')
-            yield('/waitaddon "SelectYesno"')
-            if Addons.GetAddon("SelectYesno").Ready then
-                yield("/click SelectYesno Yes")
-            end
-            sleep(1.305)
-            while not Player.Available do
-                sleep(0.307)
-            end
-            sleep(1.309)
-            MoveAndInteract("T'mokkri")
-        elseif IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") then --leve handler
-            if debug then
-                yield("/echo [QST Comp Comp] Debug: Attempting Swiftperch leve.")
-            end
-            if Entity.Target and Entity.Target.Name  == "Swygskyf" then
-                yield('/waitaddon "JournalDetail"')
-                if Addons.GetAddon("JournalDetail").Ready then
-                    yield("/callback JournalDetail true 3 556")
+        repeat --cycle wait replacement with check for questId
+            sleep(1.267)
+            if (Svc.Condition[34] or Svc.Condition[56]) then
+                if Svc.Condition[26] then
+                    yield('/vbm cfg aiconfig ForbidMovement False')
+                else
+                    yield('/vbm cfg aiconfig ForbidMovement True')
                 end
-                IPC.vnavmesh.PathfindAndMoveTo(Vector3(604.7, 6.5, 482), false)
-                while IPC.vnavmesh.IsRunning() and counter < 20 do
-                    sleep(1.437)
+            end
+        until counter >= 4
+        --if hunt_target then
+        if Entity.Player and not Entity.Player.IsInCombat and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] then
+            yield('/vbm ai off')
+            yield('/vbm cfg aiconfig forbidactions true')
+        end
+        if TerritoryType() == 1042 then --some start stone vigil for some reason -- that reason was qstcc starting after being deleted. reload snd to fix
+            yield("/xa leaveduty")
+        end
+        if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
+            local counter = 0
+            --quest-related stuck checks
+            local questId = IPC.Questionable.GetCurrentQuestId()
+            if questId == "311" and QuestText():find("Marauders' Guild.", 1, true) then
+                yield("/li Marauders")
+                while IPC.Lifestream.IsBusy() and counter < 20 do
+                    sleep(1.417)
                     counter = counter + 1
                 end
                 counter = 0
-            end
-            if FindToDoListRow("Report to") then
-                if debug then
-                    yield("/e [QSTCC_Ret+FSH(Immortal_FLames)]: Swiftperch battle leve started.")
-                end
-                while IPC.vnavmesh.IsRunning() and counter < 20 do
-                    sleep(1.445)
-                    counter = counter + 1
-                end
-                counter = 0
-                StartGuildLeveFromToDoList("Report to")
-                while IPC.vnavmesh.IsRunning() and counter < 20 do
-                    sleep(1.449)
-                    counter = counter + 1
-                end
-                sleep(0.447)
-                counter = 0
-                while not (Entity.Player and Entity.Player.IsInCombat) and counter < 20 do
-                    sleep(1.450)
-                    yield("/target crab")
-                    yield("/rsr manual")
-                    yield("/vnav movetarget")
-                    counter = counter + 1
-                end
-                sleep(1)
-                counter = 0
-                while Entity.Player and Entity.Player.IsInCombat and counter < 20 do
-                    sleep(1.455)
-                    counter = counter + 1
-                end
-                counter = 0
+            elseif TerritoryType() == 128 and IsPlayerCloseTo(-12.4980955, 91.49984, -12.168484) then
+                MoveAndInteract("Blanmhas")
+                yield('/waitaddon "SelectString"')
+                yield('/send NUMPAD0')
+                yield('/send NUMPAD0')
                 yield('/waitaddon "SelectYesno"')
                 if Addons.GetAddon("SelectYesno").Ready then
                     yield("/click SelectYesno Yes")
                 end
-                MoveAndInteract("Swygskyf")
-            end
-        elseif IPC.Questionable.IsQuestAccepted("696") and not IPC.Questionable.IsQuestComplete("696") then
-            if Entity.Target and Entity.Target.Name  == "Nahctahr" then
-                yield('/waitaddon "JournalDetail"')
-                if Addons.GetAddon("JournalDetail").Ready then
-                    yield("/callback JournalDetail true 3 629")
+                sleep(1.305)
+                while not Player.Available do
+                    sleep(0.307)
                 end
-                IPC.vnavmesh.PathfindAndMoveTo(Vector3(514.7, 9.7, 376.2), false)
-                while IPC.vnavmesh.IsRunning() and counter < 20 do
-                    sleep(1.488)
-                    counter = counter + 1
+                sleep(1.309)
+                MoveAndInteract("T'mokkri")
+            elseif IPC.Questionable.IsQuestAccepted("693") and not IPC.Questionable.IsQuestComplete("693") then --leve handler
+                if debug then
+                    yield("/echo [QST Comp Comp] Debug: Attempting Swiftperch leve.")
                 end
-                counter = 0
-            elseif IsPlayerCloseTo(514.724, 9.702966, 376.21405) or Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then
-                if not Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then 
-                    StartGuildLeveFromToDoList("Report to") --leve handler
-                end
-                sleep(1)
-                local locationCoords = {
-                    [1] = Vector3(525.38184, 9.357127, 366.5743),
-                    [2] = Vector3(509.2259, 8.977512, 296.1835),
-                    [3] = Vector3(448.5125, 13.319736, 311.14517),
-                    [4] = Vector3(449.51196, 14.8454895, 363.89316),
-                    [5] = Vector3(341.6311, 33.9868, 358.9881)
-                }
-
-                function MoveToNextLocation(n)
-                    if debug then
-                        yield("/e Locations visited(n): "..n)
+                if Entity.Target and Entity.Target.Name  == "Swygskyf" then
+                    yield('/waitaddon "JournalDetail"')
+                    if Addons.GetAddon("JournalDetail").Ready then
+                        yield("/callback JournalDetail true 3 556")
                     end
-                    local coords = locationCoords[n + 1]  -- n already visited, so head to the (n+1)th spot
-                    if coords then
-                        IPC.vnavmesh.PathfindAndMoveTo(coords, false)
+                    IPC.vnavmesh.PathfindAndMoveTo(Vector3(604.7, 6.5, 482), false)
+                    while IPC.vnavmesh.IsRunning() and counter < 20 do
+                        sleep(1.437)
+                        counter = counter + 1
+                    end
+                    counter = 0
+                end
+                if FindToDoListRow("Report to") then
+                    if debug then
+                        yield("/e [QSTCC_Ret+FSH(Immortal_FLames)]: Swiftperch battle leve started.")
+                    end
+                    while IPC.vnavmesh.IsRunning() and counter < 20 do
+                        sleep(1.445)
+                        counter = counter + 1
+                    end
+                    counter = 0
+                    StartGuildLeveFromToDoList("Report to")
+                    while IPC.vnavmesh.IsRunning() and counter < 20 do
+                        sleep(1.449)
+                        counter = counter + 1
+                    end
+                    sleep(0.447)
+                    counter = 0
+                    while not (Entity.Player and Entity.Player.IsInCombat) and counter < 20 do
+                        sleep(1.450)
+                        yield("/target crab")
+                        yield("/rsr manual")
+                        yield("/vnav movetarget")
+                        counter = counter + 1
+                    end
+                    sleep(1)
+                    counter = 0
+                    while Entity.Player and Entity.Player.IsInCombat and counter < 20 do
+                        sleep(1.455)
+                        counter = counter + 1
+                    end
+                    counter = 0
+                    yield('/waitaddon "SelectYesno"')
+                    if Addons.GetAddon("SelectYesno").Ready then
+                        yield("/click SelectYesno Yes")
+                    end
+                    MoveAndInteract("Swygskyf")
+                end
+            elseif IPC.Questionable.IsQuestAccepted("696") and not IPC.Questionable.IsQuestComplete("696") then
+                if Entity.Target and Entity.Target.Name  == "Nahctahr" then
+                    yield('/waitaddon "JournalDetail"')
+                    if Addons.GetAddon("JournalDetail").Ready then
+                        yield("/callback JournalDetail true 3 629")
+                    end
+                    IPC.vnavmesh.PathfindAndMoveTo(Vector3(514.7, 9.7, 376.2), false)
+                    while IPC.vnavmesh.IsRunning() and counter < 20 do
+                        sleep(1.488)
+                        counter = counter + 1
+                    end
+                    counter = 0
+                elseif IsPlayerCloseTo(514.724, 9.702966, 376.21405) or Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then
+                    if not Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then 
+                        StartGuildLeveFromToDoList("Report to") --leve handler
+                    end
+                    sleep(1)
+                    local locationCoords = {
+                        [1] = Vector3(525.38184, 9.357127, 366.5743),
+                        [2] = Vector3(509.2259, 8.977512, 296.1835),
+                        [3] = Vector3(448.5125, 13.319736, 311.14517),
+                        [4] = Vector3(449.51196, 14.8454895, 363.89316),
+                        [5] = Vector3(341.6311, 33.9868, 358.9881)
+                    }
+
+                    function MoveToNextLocation(n)
                         if debug then
-                            yield("/e Moving to "..tostring(coords))
+                            yield("/e Locations visited(n): "..n)
                         end
-                        sleep(0.145)
-                        while IPC.vnavmesh.IsRunning() do
-                            MoveAndInteract("Destination")
+                        local coords = locationCoords[n + 1]  -- n already visited, so head to the (n+1)th spot
+                        if coords then
+                            IPC.vnavmesh.PathfindAndMoveTo(coords, false)
+                            if debug then
+                                yield("/e Moving to "..tostring(coords))
+                            end
+                            sleep(0.145)
+                            while IPC.vnavmesh.IsRunning() do
+                                MoveAndInteract("Destination")
+                                sleep(1)
+                            end
+                        end
+                    end
+                    local n = 0
+                    while Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible do
+                        yield("/qst stop")
+                        sleep(0.5)
+                        MoveToNextLocation(n)
+                        sleep(2)
+                        TargetLeveObjectives()
+                        while Entity.Player and Entity.Player.IsInCombat do
+                            HardTarget()
                             sleep(1)
                         end
+                        n = n + 1
+                        if n == 6 then
+                            n = 0
+                        end
                     end
-                end
-                local n = 0
-                while Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible do
-                    yield("/qst stop")
-                    sleep(0.5)
-                    MoveToNextLocation(n)
-                    sleep(2)
-                    TargetLeveObjectives()
-                    while Entity.Player and Entity.Player.IsInCombat do
-                        HardTarget()
-                        sleep(1)
+                    yield('/waitaddon "SelectYesno"')
+                    if Addons.GetAddon("SelectYesno").Ready then
+                        yield("/click SelectYesno Yes")
                     end
-                    n = n + 1
-                    if n == 6 then
-                        n = 0
-                    end
-                end
-                yield('/waitaddon "SelectYesno"')
-                if Addons.GetAddon("SelectYesno").Ready then
-                    yield("/click SelectYesno Yes")
                 end
             end
-        end
-        if Entity.Player and not Entity.Player.IsCasting and Player.Available and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --pretty much hail merry attempt
-            yield("/vbm ai off")
-            yield("/vbm ar clear")
-            yield('/vbm cfg aiconfig ForbidMovement True')
-            yield("/qst stop")
-            yield("/send NUMPAD0")
-            yield("/send NUMPAD0")
-            yield("/send NUMPAD0")
-            sleep(2.573)
-            yield("/qst start")
-            sleep(9.575)
-            if CheckPosStuck() then
-                yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
-                yield("/qst reload")
+            if Entity.Player and not Entity.Player.IsCasting and Player.Available and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --pretty much hail merry attempt
+                yield("/vbm ai off")
+                yield("/vbm ar clear")
+                yield('/vbm cfg aiconfig ForbidMovement True')
+                yield("/qst stop")
+                yield("/send NUMPAD0")
+                yield("/send NUMPAD0")
+                yield("/send NUMPAD0")
+                sleep(2.573)
+                yield("/qst start")
+                sleep(9.575)
+                if CheckPosStuck() then
+                    yield("/echo [QST Comp Comp] Debug: Standing still out of combat, reloading quest.")
+                    yield("/qst reload")
+                end
             end
+        AddonHandler(addonConfigs)
+        positionHistory = {}
         end
-    AddonHandler(addonConfigs)
-    positionHistory = {}
+        -- CheckPosStuck() end
+    elseif Player.GCRankImmortalFlames < 9 then
+        SwapJobFromArmoury(3, 21)
     end
-    -- CheckPosStuck() end
 end
