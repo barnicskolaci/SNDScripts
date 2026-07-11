@@ -675,5 +675,8 @@ while Addons.GetAddon("_DTR").Exists do
         -- CheckPosStuck() end
     elseif Player.GCRankImmortalFlames < 9 then --this is for hunt log, but it should ideally do fisher leves first
         SwapJobFromArmoury(3, 21)
+        while Player.GCRankImmortalFlames < 9 do
+            sleep(10.679)
+        end
     end
 end
