@@ -411,7 +411,7 @@ while Addons.GetAddon("_DTR").Exists do
         local counter = 0
         --quest-related stuck checks
         local questId = IPC.Questionable.GetCurrentQuestId()
-        if questId == "313" and QuestText():find("Marauders' Guild.", 1, true) then
+        if questId == "311" and QuestText():find("Marauders' Guild.", 1, true) then
             yield("/li Marauders")
             while IPC.Lifestream.IsBusy() and counter < 20 do
                 sleep(1.417)
