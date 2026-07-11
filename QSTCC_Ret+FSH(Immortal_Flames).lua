@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3
+version: 1.3.1
 triggers:
 - onlogin
 - onterritorychange
@@ -173,31 +173,31 @@ function EquipRecommendedGear()
         yield("/echo [QSTCC_R+FSH(I_F)]: Equipping recommended gear.")
     end
     repeat
-        Sleep(0.1)
+        sleep(0.1)
     until Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[26]
 
     repeat
         yield("/character")
-        Sleep(0.1)
+        sleep(0.1)
     until Addons.GetAddon("Character").Ready
 
     repeat
         if Addons.GetAddon("Character").Ready then
             yield("/callback Character true 12")
         end
-        Sleep(0.1)
+        sleep(0.1)
     until Addons.GetAddon("RecommendEquip").Ready
 
     repeat
         yield("/character")
-        Sleep(0.1)
+        sleep(0.1)
     until not Addons.GetAddon("Character").Ready
 
     repeat
         if Addons.GetAddon("RecommendEquip").Ready then
             yield("/callback RecommendEquip true 0")
         end
-        Sleep(0.1)
+        sleep(0.1)
     until not Addons.GetAddon("RecommendEquip").Ready
 end
 
@@ -673,7 +673,7 @@ while Addons.GetAddon("_DTR").Exists do
         positionHistory = {}
         end
         -- CheckPosStuck() end
-    elseif Player.GCRankImmortalFlames < 9 then
+    elseif Player.GCRankImmortalFlames < 9 then --this is for hunt log, but it should ideally do fisher leves first
         SwapJobFromArmoury(3, 21)
     end
 end
