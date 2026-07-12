@@ -125,10 +125,12 @@ function StartGuildLeveFromToDoList(matchText)
     end
     yield('/waitaddon "JournalDetail"')
     if Addons.GetAddon("JournalDetail").Ready then
+        sleep(0.1)
         yield("/click JournalDetail Initiate")
     end
     yield('/waitaddon "SelectYesno"')
     if Addons.GetAddon("SelectYesno").Ready then
+        sleep(0.1)
         yield("/click SelectYesno Yes")
     end
     return true
@@ -288,7 +290,7 @@ local addonConfigs = {
     { addon = "SelectYesno", condition = tp_error == false and function() return not IPC.Lifestream.IsBusy() end },
     { addon = "SelectString" },
     { addon = "JournalAccept" }, --qst stuck on war quest waiting to equip soul crystal
-    { addon = "JournalResult", command = function() yield("/click JournalResult Decline") end },
+    { addon = "JournalResult", command = function() sleep(0.1) yield("/click JournalResult Decline") end },
     { addon = "JournalRewardItem" },
     { addon = "GrandCompanySupplyList" },
     { addon = "Description" }, --stuck on frontline info
@@ -485,7 +487,7 @@ while Addons.GetAddon("_DTR").Exists do
         --local hunt_target = MatchHuntObjective(QuestText())
             -- Overworld mob hunting
         if Addons.GetAddon("PvpWelcome").Ready then
-            yield('/callback "PvpWelcome" true -1')
+            yield('/callback PvpWelcome true -1')
         end
         if not IPC.Questionable.IsRunning() and not Svc.Condition[34] and not Svc.Condition[56] then
             AddonHandler(addonConfigs)
@@ -494,7 +496,8 @@ while Addons.GetAddon("_DTR").Exists do
         end
         local counter = 0
         repeat --cycle wait replacement with check for questId
-            sleep(1.267)
+            sleep(0.497)
+            counter = counter + 1
             if (Svc.Condition[34] or Svc.Condition[56]) then
                 if Svc.Condition[26] then
                     yield('/vbm cfg aiconfig ForbidMovement False')
@@ -511,7 +514,7 @@ while Addons.GetAddon("_DTR").Exists do
         if TerritoryType() == 1042 then --some start stone vigil for some reason -- that reason was qstcc starting after being deleted. reload snd to fix
             yield("/xa leaveduty")
         end
-        if CheckPosStuck() and Entity.Player and not Entity.Player.IsCasting then
+        if CheckPosStuck() and Entity.Player and Player.Available and not Entity.Player.IsCasting then
             local counter = 0
             --quest-related stuck checks
             local questId = IPC.Questionable.GetCurrentQuestId()
@@ -522,13 +525,14 @@ while Addons.GetAddon("_DTR").Exists do
                     counter = counter + 1
                 end
                 counter = 0
-            elseif TerritoryType() == 128 and IsPlayerCloseTo(-12.4980955, 91.49984, -12.168484) then
+            elseif TerritoryType() == 128 and IPC.Questionable.GetCurrentQuestId() and not IPC.Questionable.IsQuestAccepted("693") then
                 MoveAndInteract("Blanmhas")
                 yield('/waitaddon "SelectString"')
                 yield('/send NUMPAD0')
                 yield('/send NUMPAD0')
                 yield('/waitaddon "SelectYesno"')
                 if Addons.GetAddon("SelectYesno").Ready then
+                    sleep(0.1)
                     yield("/click SelectYesno Yes")
                 end
                 sleep(1.305)
@@ -585,6 +589,7 @@ while Addons.GetAddon("_DTR").Exists do
                     counter = 0
                     yield('/waitaddon "SelectYesno"')
                     if Addons.GetAddon("SelectYesno").Ready then
+                        sleep(0.1)
                         yield("/click SelectYesno Yes")
                     end
                     MoveAndInteract("Swygskyf")
@@ -649,6 +654,7 @@ while Addons.GetAddon("_DTR").Exists do
                     end
                     yield('/waitaddon "SelectYesno"')
                     if Addons.GetAddon("SelectYesno").Ready then
+                        sleep(0.1)
                         yield("/click SelectYesno Yes")
                     end
                 end
