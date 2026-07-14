@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.2
+version: 1.3.3
 triggers:
 - onlogin
 - onterritorychange
@@ -178,10 +178,19 @@ function EquipRecommendedGear()
         sleep(0.1)
     until Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[26]
 
+    local character_open_attempts = 0
     repeat
-        yield("/character")
-        sleep(0.1)
-    until Addons.GetAddon("Character").Ready
+        if Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[26] then
+            yield("/character")
+        end
+        sleep(0.25)
+        character_open_attempts = character_open_attempts + 1
+    until Addons.GetAddon("Character").Ready or character_open_attempts >= 40
+
+    if not Addons.GetAddon("Character").Ready then
+        yield("/echo [QSTCC_Ret+FSH(I_F) EquipRecommendedGear: Character addon never opened after " .. character_open_attempts .. " attempts, aborting.")
+        return
+    end
 
     repeat
         if Addons.GetAddon("Character").Ready then
@@ -464,6 +473,98 @@ function AllQuestsComplete()
     return true
 end
 
+-- RelogNext's rotation-pass tracking has to survive across relogs, and this whole script
+-- re-executes fresh (fresh Lua locals) on every "onlogin" trigger firing on the next character
+-- -- so "have we already been all the way around" can't live in a local, it needs a file.
+-- Svc.PluginInterface.ConfigDirectory resolves to THIS running instance's own SND config folder
+-- (same mechanism SND itself uses internally), so this works correctly across separate
+-- multi-boxed clients each with their own Dalamud data root, not just the default %appdata% one.
+local rotation_state_file = Svc.PluginInterface.ConfigDirectory.FullName .. "\\qstcc_retfsh_if_rotation_state.txt"
+
+local function ReadRotationStartCID()
+    local file = io.open(rotation_state_file, "r")
+    if not file then
+        return nil
+    end
+    local content = file:read("*a")
+    file:close()
+    return tonumber(content)
+end
+
+local function WriteRotationStartCID(cid)
+    local file = io.open(rotation_state_file, "w")
+    if file then
+        file:write(tostring(cid))
+        file:close()
+    end
+end
+
+local function ClearRotationState()
+    os.remove(rotation_state_file)
+end
+
+-- Usage: RelogNext()
+-- Finds the current character's CID in AutoRetainer's registered character list and relogs
+-- into whichever character is next in that list. Stops (returns false, no relog issued) once
+-- the next character in line would be the one this rotation pass started on, so a full roster
+-- gets processed exactly once instead of cycling forever.
+-- Uses /ays relog (-> MultiMode.Relog) directly rather than the PluginState.Relog IPC method:
+-- that IPC call gates on CanAutoLogin(), which requires being logged OUT at the title screen,
+-- so it always rejects when called while playing (confirmed against the installed AR build).
+function RelogNext()
+    if not Entity.Player then
+        yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: no local player, aborting.")
+        return false
+    end
+
+    local current_cid = Entity.Player.ContentId
+    local registered_cids = IPC.AutoRetainer.GetRegisteredCharacters()
+
+    local current_index = nil
+    for i = 0, registered_cids.Count - 1 do
+        if registered_cids[i] == current_cid then
+            current_index = i
+            break
+        end
+    end
+
+    if current_index == nil then
+        yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: current character (CID " .. tostring(current_cid) .. ") is not registered in AutoRetainer.")
+        return false
+    end
+
+    local pass_start_cid = ReadRotationStartCID()
+    if pass_start_cid == nil then
+        pass_start_cid = current_cid
+        WriteRotationStartCID(pass_start_cid)
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: starting new rotation pass at CID " .. tostring(pass_start_cid))
+        end
+    end
+
+    local next_index = (current_index + 1) % registered_cids.Count
+    local next_cid = registered_cids[next_index]
+
+    if next_cid == pass_start_cid then
+        yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: full rotation complete, every character has been processed. Stopping.")
+        ClearRotationState()
+        return false
+    end
+
+    local next_char = IPC.AutoRetainer.GetOfflineCharacterData(next_cid)
+    local next_char_name = next_char.Name .. "@" .. next_char.World
+
+    if debug then
+        yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: currently index " .. current_index .. "/" .. (registered_cids.Count - 1) .. ", next is " .. next_char_name)
+    end
+
+    yield('/ays relog ' .. next_char_name)
+    if debug then
+        yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: relog issued for " .. next_char_name)
+    end
+    return true
+end
+
 --[[#########################################
 ###########  SCRIPT START  ##################
 ###########################################]]
@@ -683,10 +784,26 @@ while Addons.GetAddon("_DTR").Exists do
         repeat
             sleep(0.678)
         until Entity.Player and Player.Available
-        SwapJobFromArmoury(3, 21)
-        
-        while Addons.GetAddon("_DTR").Exists and Player.GCRankImmortalFlames < 9 do
-            sleep(10.679)
+        sleep(2.73)
+        --[[local job_swap_attempts = 0
+        local job_swapped = SwapJobFromArmoury(3, 21)
+        while not job_swapped and job_swap_attempts < 3 do
+            job_swap_attempts = job_swap_attempts + 1
+            if debug then
+                yield("/echo [QSTCC_Ret+FSH(I_F) Job swap failed, retrying (" .. job_swap_attempts .. "/3)...")
+            end
+            sleep(2)
+            job_swapped = SwapJobFromArmoury(3, 21)
         end
+
+        if job_swapped then
+            sleep(1.734)
+            RelogNext()]]
+            while Addons.GetAddon("_DTR").Exists and Player.GCRankImmortalFlames < 9 do
+                sleep(10.679)
+            end
+        --[[else
+            yield("/echo [QSTCC_Ret+FSH(I_F) Job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
+        end]]
     end
 end
