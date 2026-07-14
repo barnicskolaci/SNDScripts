@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4
+version: 1.4.1
 triggers:
 - onlogin
 - onterritorychange
@@ -23,6 +23,10 @@ local no_of_retainers = 2
 
 function HasFishAndLeves()
     return false --!will need to check inventory for black sole and the rest and leves
+end
+
+function DoOceanFishing() --get AH or vermaxion or FUTA fishing functionality
+    yield("/e [QSTCC_Ret+FSH(IF)] ! Ocean fishing to come in a future update.")
 end
 
 function FisherLevelReached()
@@ -806,12 +810,11 @@ while Addons.GetAddon("_DTR").Exists do
         -- CheckPosStuck() end
     elseif IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers then --need to make more retainers than currently have
         IPC.Questionable.AddQuestPriority("1433") --ill-gained venture (limsa)
-        yield("/henchman RetainerVocate "..tostring(no_of_retainers).." FSH MRD") --can be changed to whatever you need
-        if IPC.Questionable.IsQuestAccepted("1433") and not IPC.Questionable.IsQuestComplete("1433") then
+        yield("/henchman RetainerVocate "..tostring(no_of_retainers).." FSH MRD true") --can be changed to whatever you need
+        if IPC.Questionable.IsQuestAccepted("1433") and not IPC.Questionable.IsQuestComplete("1433") and not IPC.Questionable.IsRunning() then
             yield("/qst start")
         end
-    elseif not FisherLevelReached() then
-        if Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
+    elseif not FisherLevelReached() and Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
             repeat
                 sleep(0.678)
             until Entity.Player and Player.Available
@@ -860,8 +863,9 @@ while Addons.GetAddon("_DTR").Exists do
             else
                 yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
             end
-        elseif true then
-            --ocean fishing
+    elseif os.date("!*t").hour % 2 == 1 and os.date("!*t").min < 12 then
+        if os.date("!*t").min >= 6 then
+            DoOceanFishing()
         end
     elseif Player.GCRankImmortalFlames < 9 then --for hunt log !add command/IPC as QST companion updates 
         repeat
