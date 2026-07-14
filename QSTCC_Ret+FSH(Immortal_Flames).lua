@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.3.3
+version: 1.4
 triggers:
 - onlogin
 - onterritorychange
@@ -18,6 +18,16 @@ local tp_error = false
 local interactioncount = 0
 local targetName = nil
 local debug = false
+local FISHER_TARGET_LEVEL = 90
+local no_of_retainers = 2
+
+function HasFishAndLeves()
+    return false --!will need to check inventory for black sole and the rest and leves
+end
+
+function FisherLevelReached()
+    return Player.Available and Player.GetJob(18).Level >= FISHER_TARGET_LEVEL
+end
 
 function TerritoryType()
     if Svc.ClientState.TerritoryType then
@@ -452,7 +462,7 @@ function SwapJobFromArmoury(...)
 end
 
 --MRD 1, 5, 10; Halatali, Pvp, Cutter's cry, Swiftperch and Costa Del Sol leves, FSH + Ocean Fishing quests
-local quests_needed = {"311", "313", "314", "697", "1106", "921", "693", "696", "1134", "1107", "1108", "3843" }
+local quests_needed = {"311", "313", "314", "697", "1106", "921", "693", "696", "1134", "1107", "1108", "3843"} --no 1433 ill-venture(limsa) because henchman will do it
 local completed_quests = {}
 
 -- Marks any not-yet-logged quest in quests_needed as complete if Questionable now reports it done.
@@ -565,9 +575,22 @@ function RelogNext()
     return true
 end
 
---[[#########################################
-###########  SCRIPT START  ##################
-###########################################]]
+
+
+
+
+--[[###################################################################################################################################
+###########           ####             ####           #####   ###            ####                   ###################################
+###########   ############   ##############   ######   ####   ###   #######   ###########   ###########################################
+###########   ############   ##############   #####    ####   ###   ######   ############   ###########################################
+###########           ####   ##############         #######   ###           #############   ###########################################
+###################   ####   ##############   ####   ######   ###   #####################   ###########################################
+###################   ####   ##############   #####   #####   ###   #####################   ###########################################
+###########           ####             ####   ######   ####   ###   #####################   ###########################################
+#####################################################################################################################################]]
+
+
+
 
 if not debug then
     yield("/dps wloadall") --this is for Dhog Potato System window placement
@@ -582,6 +605,10 @@ UpdateCompletedQuests()
 local all_quests_complete = AllQuestsComplete()
 
 while Addons.GetAddon("_DTR").Exists do
+    sleep(1.604)
+    if all_quests_complete and IPC.Questionable.IsRunning() and IPC.Questionable.GetCurrentQuestId() ~= "1433" then
+        yield("/qst stop")
+    end
     if not all_quests_complete then
         UpdateCompletedQuests()
         all_quests_complete = AllQuestsComplete()
@@ -590,7 +617,7 @@ while Addons.GetAddon("_DTR").Exists do
         if Addons.GetAddon("PvpWelcome").Ready then
             yield('/callback PvpWelcome true -1')
         end
-        if not IPC.Questionable.IsRunning() and not Svc.Condition[34] and not Svc.Condition[56] then
+        if not IPC.Questionable.IsRunning() and not Svc.Condition[34] and not Svc.Condition[56] and not all_quests_complete then
             AddonHandler(addonConfigs)
             sleep(0.306)
             yield("/qst start")
@@ -612,9 +639,6 @@ while Addons.GetAddon("_DTR").Exists do
             yield('/vbm ai off')
             yield('/vbm cfg aiconfig forbidactions true')
         end
-        if TerritoryType() == 1042 then --some start stone vigil for some reason -- that reason was qstcc starting after being deleted. reload snd to fix
-            yield("/xa leaveduty")
-        end
         if CheckPosStuck() and Entity.Player and Player.Available and not Entity.Player.IsCasting then
             local counter = 0
             --quest-related stuck checks
@@ -626,7 +650,7 @@ while Addons.GetAddon("_DTR").Exists do
                     counter = counter + 1
                 end
                 counter = 0
-            elseif TerritoryType() == 128 and IPC.Questionable.GetCurrentQuestId() and not IPC.Questionable.IsQuestAccepted("693") then
+            elseif TerritoryType() == 128 and questId == "693" and not IPC.Questionable.IsQuestAccepted("693") then
                 MoveAndInteract("Blanmhas")
                 yield('/waitaddon "SelectString"')
                 yield('/send NUMPAD0')
@@ -760,7 +784,7 @@ while Addons.GetAddon("_DTR").Exists do
                     end
                 end
             end
-            if Entity.Player and not Entity.Player.IsCasting and Player.Available and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() then --pretty much hail merry attempt
+            if Entity.Player and not Entity.Player.IsCasting and Player.Available and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not all_quests_complete then --pretty much hail merry attempt
                 yield("/vbm ai off")
                 yield("/vbm ar clear")
                 yield('/vbm cfg aiconfig ForbidMovement True')
@@ -780,12 +804,71 @@ while Addons.GetAddon("_DTR").Exists do
         positionHistory = {}
         end
         -- CheckPosStuck() end
-    elseif Player.GCRankImmortalFlames < 9 then --this is for hunt log, but it should ideally do fisher leves first
+    elseif IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers then --need to make more retainers than currently have
+        IPC.Questionable.AddQuestPriority("1433") --ill-gained venture (limsa)
+        yield("/henchman RetainerVocate "..tostring(no_of_retainers).." FSH MRD") --can be changed to whatever you need
+        if IPC.Questionable.IsQuestAccepted("1433") and not IPC.Questionable.IsQuestComplete("1433") then
+            yield("/qst start")
+        end
+    elseif not FisherLevelReached() then
+        if Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
+            repeat
+                sleep(0.678)
+            until Entity.Player and Player.Available
+            sleep(2.73)
+
+            local job_swap_attempts = 0
+            local job_swapped = SwapJobFromArmoury(18)
+            while not job_swapped and job_swap_attempts < 3 do
+                job_swap_attempts = job_swap_attempts + 1
+                if debug then
+                    yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed, retrying (" .. job_swap_attempts .. "/3)...")
+                end
+                sleep(2)
+                job_swapped = SwapJobFromArmoury(18)
+            end
+
+            if job_swapped then
+                yield("/chilledleves start")
+
+                -- ChilledLeves exposes no IPC and no "still running" flag we can read from SND, so
+                -- progress is inferred from Fisher level: relies on ChilledLeves' own worklist
+                -- (pre-populated by hand, shared across characters via its plugin config) for which
+                -- leves to grab/turn in -- it does NOT catch fish, so the worklist only advances as
+                -- far as already-stocked catch allows. ~15 min with no level gain is treated as
+                -- "nothing left this character can turn in right now" and we move on.
+                local last_level = Player.GetJob(18).Level
+                local stagnant_checks = 0
+                while Addons.GetAddon("_DTR").Exists and not FisherLevelReached() and stagnant_checks < 30 do
+                    sleep(30)
+                    AddonHandler(addonConfigs)
+                    local current_level = Player.GetJob(18).Level
+                    if current_level > last_level then
+                        last_level = current_level
+                        stagnant_checks = 0
+                    else
+                        stagnant_checks = stagnant_checks + 1
+                    end
+                end
+
+                yield("/chilledleves stop")
+                if debug then
+                    yield("/echo [QSTCC_Ret+FSH(I_F) Fisher leveling paused at level " .. tostring(Player.GetJob(18).Level) .. " (target " .. FISHER_TARGET_LEVEL .. ").")
+                end
+                sleep(1.734)
+                RelogNext()
+            else
+                yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
+            end
+        elseif true then
+            --ocean fishing
+        end
+    elseif Player.GCRankImmortalFlames < 9 then --for hunt log !add command/IPC as QST companion updates 
         repeat
             sleep(0.678)
         until Entity.Player and Player.Available
         sleep(2.73)
-        --[[local job_swap_attempts = 0
+        local job_swap_attempts = 0
         local job_swapped = SwapJobFromArmoury(3, 21)
         while not job_swapped and job_swap_attempts < 3 do
             job_swap_attempts = job_swap_attempts + 1
@@ -798,12 +881,16 @@ while Addons.GetAddon("_DTR").Exists do
 
         if job_swapped then
             sleep(1.734)
-            RelogNext()]]
+            RelogNext()
             while Addons.GetAddon("_DTR").Exists and Player.GCRankImmortalFlames < 9 do
                 sleep(10.679)
             end
-        --[[else
+        else
             yield("/echo [QSTCC_Ret+FSH(I_F) Job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
-        end]]
+        end
+    else
+        yield("/e [QSTCC_Ret+FSH(IF)] No current tasks as per conditions.")
+        sleep(3)
+        RelogNext()
     end
 end
