@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4.1
+version: 1.4.2
 triggers:
 - onlogin
 - onterritorychange
@@ -608,8 +608,12 @@ end
 UpdateCompletedQuests()
 local all_quests_complete = AllQuestsComplete()
 
+repeat
+    sleep(0.613)
+until Entity.Player and Player.Available
+
 while Addons.GetAddon("_DTR").Exists do
-    sleep(1.604)
+    sleep(1.615)
     if all_quests_complete and IPC.Questionable.IsRunning() and IPC.Questionable.GetCurrentQuestId() ~= "1433" then
         yield("/qst stop")
     end
