@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4.3
+version: 1.4.4
 triggers:
 - onlogin
 - onterritorychange
@@ -660,7 +660,7 @@ if hunt_log_queue_active then
     yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] hunt_log_queue_active is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
 end
 
-while Addons.GetAddon("_DTR").Exists and not hunt_log_queue_active do
+while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_active do
     sleep(0.615)
     local ok_retainer_count, retainer_count = pcall(function()
         return IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count
