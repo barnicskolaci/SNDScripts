@@ -954,8 +954,9 @@ while Addons.GetAddon("_DTR").Exists and not hunt_log_queue_active do
             else
                 yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
             end
-    elseif os.date("!*t").hour % 2 == 1 and os.date("!*t").min < 12 then
+    elseif os.date("!*t").hour % 2 == 0 and os.date("!*t").min < 12 then
         yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: ocean fishing window.")
+        DoOceanFishing()--not quite, just for now
         if os.date("!*t").min >= 6 then
             DoOceanFishing()
         end
