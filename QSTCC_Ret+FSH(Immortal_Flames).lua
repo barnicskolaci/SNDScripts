@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4.4
+version: 1.4.5
 triggers:
 - onlogin
 - onterritorychange
@@ -878,7 +878,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         positionHistory = {}
         end
         -- CheckPosStuck() end
-    elseif (IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers or Henchman_IsBusy()) then --need to make more retainers than currently have
+    --[[elseif (IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers or Henchman_IsBusy()) then --need to make more retainers than currently have
         yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: retainer/henchman.")
         repeat
             sleep(0.859)
@@ -903,7 +903,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
             if CheckPosStuck() then --don't stop it at summoning bell
                 yield("/henchman Stop")
             end
-        end
+        end]]
     elseif not FisherLevelReached() and Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
             yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: fisher leves.")
             repeat
