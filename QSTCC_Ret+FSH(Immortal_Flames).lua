@@ -18,7 +18,7 @@ import("System.Numerics")
 local tp_error = false
 local interactioncount = 0
 local targetName = nil
-local debug = true
+local debug = false
 local FISHER_TARGET_LEVEL = 90
 local no_of_retainers = 2
 
