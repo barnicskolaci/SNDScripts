@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4.2
+version: 1.4.3
 triggers:
 - onlogin
 - onterritorychange
@@ -12,14 +12,17 @@ function_chat_filters:
 [[End Metadata]]
 --]=====]
 
+import("System")
 import("System.Numerics")
 
 local tp_error = false
 local interactioncount = 0
 local targetName = nil
-local debug = false
+local debug = true
 local FISHER_TARGET_LEVEL = 90
 local no_of_retainers = 2
+
+local hunt_log_queue_active = true --SET THIS MANUALLY
 
 function HasFishAndLeves()
     return false --!will need to check inventory for black sole and the rest and leves
@@ -27,10 +30,28 @@ end
 
 function DoOceanFishing() --get AH or vermaxion or FUTA fishing functionality
     yield("/e [QSTCC_Ret+FSH(IF)] ! Ocean fishing to come in a future update.")
+    RelogNext()
+end
+
+function IsPluginEnabled(name)
+    for plugin in luanet.each(Svc.PluginInterface.InstalledPlugins) do
+        if plugin.InternalName == name or plugin.Name == name then
+            return plugin.IsLoaded
+        end
+    end
+    return false
+end
+
+function PlayerIsAvailable()
+    if Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[45] and not Svc.Condition[51] and not Svc.Condition[58] and not Svc.Condition[78] and not Svc.Condition[50] then
+        return true
+    else
+        return false
+    end
 end
 
 function FisherLevelReached()
-    return Player.Available and Player.GetJob(18).Level >= FISHER_TARGET_LEVEL
+    return PlayerIsAvailable() and Player.GetJob(18).Level >= FISHER_TARGET_LEVEL
 end
 
 function TerritoryType()
@@ -190,11 +211,11 @@ function EquipRecommendedGear()
     end
     repeat
         sleep(0.1)
-    until Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[26]
+    until PlayerIsAvailable() and not Svc.Condition[26]
 
     local character_open_attempts = 0
     repeat
-        if Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[26] then
+        if PlayerIsAvailable() and not Svc.Condition[26] then
             yield("/character")
         end
         sleep(0.25)
@@ -231,14 +252,14 @@ end
 local positionHistory = {}
 
 function CheckPosStuck()
-    if not Entity.Player or not Player.Available then
+    if not PlayerIsAvailable() then
         return false
     end
     
     local currentPos = Entity.Player.Position
     
     -- Handle nil position and combat/casting states
-    if currentPos == nil or not Player.Available or Entity.Player.IsInCombat or Entity.Player.IsCasting then --i really hope nothing will periodically trigger these while the toon is still stuck
+    if currentPos == nil or not PlayerIsAvailable() or Entity.Player.IsInCombat then --i really hope nothing will periodically trigger these while the toon is still stuck
         positionHistory = {}
         return false
     end
@@ -421,7 +442,7 @@ function SwapJobFromArmoury(...)
         return false
     end
 
-    if not Player.Available or Player.Job == nil then
+    if not PlayerIsAvailable() or Player.Job == nil then
         yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: Player.Job not available.")
         return false
     end
@@ -450,7 +471,7 @@ function SwapJobFromArmoury(...)
         if item and not item.IsEmpty then
             item:MoveItemSlotToSlot(InventoryType.EquippedItems, 0)
             sleep(0.5)
-            if Player.Available and Player.Job then
+            if PlayerIsAvailable() and Player.Job then
                 for _, jobId in ipairs(targetJobIds) do
                     if Player.Job.Id == jobId then
                         EquipRecommendedGear()
@@ -579,9 +600,31 @@ function RelogNext()
     return true
 end
 
+function Henchman_IsBusy()
+    if henchman_is_busy_subscriber == nil then
+        local methods = Svc.PluginInterface:GetType():GetMethods()
+        local boolType = luanet.make_array(Type, { Type.GetType("System.Boolean") })
+        local method = nil
+        for i = 0, methods.Length - 1 do
+            local m = methods[i]
+            if m.Name == "GetIpcSubscriber" and m.IsGenericMethodDefinition and m:GetGenericArguments().Length == 1 then
+                method = m:MakeGenericMethod(boolType)
+                break
+            end
+        end
+        if method == nil then return false end
 
+        local ok, subscriber = pcall(function()
+            return method:Invoke(Svc.PluginInterface, luanet.make_array(Object, { "Henchman.IsBusy" }))
+        end)
+        if not ok or subscriber == nil then return false end
+        henchman_is_busy_subscriber = subscriber
+    end
 
-
+    local ok, result = pcall(function() return henchman_is_busy_subscriber:InvokeFunc() end)
+    if not ok then return false end
+    return result
+end
 
 --[[###################################################################################################################################
 ###########           ####             ####           #####   ###            ####                   ###################################
@@ -610,14 +653,37 @@ local all_quests_complete = AllQuestsComplete()
 
 repeat
     sleep(0.613)
-until Entity.Player and Player.Available
+until PlayerIsAvailable()
 
-while Addons.GetAddon("_DTR").Exists do
-    sleep(1.615)
+yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] Main loop entry: DTR exists=" .. tostring(Addons.GetAddon("_DTR").Exists) .. " hunt_log_queue_active=" .. tostring(hunt_log_queue_active) .. " all_quests_complete=" .. tostring(all_quests_complete))
+if hunt_log_queue_active then
+    yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] hunt_log_queue_active is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
+end
+
+while Addons.GetAddon("_DTR").Exists and not hunt_log_queue_active do
+    sleep(0.615)
+    local ok_retainer_count, retainer_count = pcall(function()
+        return IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count
+    end)
+    yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] tick: PlayerAvail=" .. tostring(PlayerIsAvailable())
+        .. " all_quests_complete=" .. tostring(all_quests_complete)
+        .. " QstRunning=" .. tostring(IPC.Questionable.IsRunning())
+        .. " QuestId=" .. tostring(IPC.Questionable.GetCurrentQuestId())
+        .. " RetainerCount=" .. tostring(ok_retainer_count and retainer_count or "ERR")
+        .. " HenchmanBusy=" .. tostring(Henchman_IsBusy())
+        .. " GCRank=" .. tostring(Player.GCRankImmortalFlames)
+        .. " PosStuck=" .. tostring(CheckPosStuck()))
     if all_quests_complete and IPC.Questionable.IsRunning() and IPC.Questionable.GetCurrentQuestId() ~= "1433" then
         yield("/qst stop")
     end
-    if not all_quests_complete then
+    if not PlayerIsAvailable() then
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: player not available, skipping tick.")
+        -- Player busy/transitioning (casting, cutscene, loading, etc.) -- skip this tick entirely
+        -- rather than let a stale/transient read of retainer count or Henchman_IsBusy() fall
+        -- through to an unrelated branch (e.g. relogging away from a character that still needs
+        -- retainer/Henchman work done).
+    elseif not all_quests_complete then
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: quest handling.")
         UpdateCompletedQuests()
         all_quests_complete = AllQuestsComplete()
         --local hunt_target = MatchHuntObjective(QuestText())
@@ -647,7 +713,7 @@ while Addons.GetAddon("_DTR").Exists do
             yield('/vbm ai off')
             yield('/vbm cfg aiconfig forbidactions true')
         end
-        if CheckPosStuck() and Entity.Player and Player.Available and not Entity.Player.IsCasting then
+        if CheckPosStuck() and PlayerIsAvailable() then
             local counter = 0
             --quest-related stuck checks
             local questId = IPC.Questionable.GetCurrentQuestId()
@@ -669,7 +735,7 @@ while Addons.GetAddon("_DTR").Exists do
                     yield("/click SelectYesno Yes")
                 end
                 sleep(1.305)
-                while not Player.Available do
+                while not PlayerIsAvailable() do
                     sleep(0.307)
                 end
                 sleep(1.309)
@@ -792,7 +858,7 @@ while Addons.GetAddon("_DTR").Exists do
                     end
                 end
             end
-            if Entity.Player and not Entity.Player.IsCasting and Player.Available and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not all_quests_complete then --pretty much hail merry attempt
+            if PlayerIsAvailable() and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not all_quests_complete then --pretty much hail merry attempt
                 yield("/vbm ai off")
                 yield("/vbm ar clear")
                 yield('/vbm cfg aiconfig ForbidMovement True')
@@ -812,16 +878,37 @@ while Addons.GetAddon("_DTR").Exists do
         positionHistory = {}
         end
         -- CheckPosStuck() end
-    elseif IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers then --need to make more retainers than currently have
+    elseif (IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers or Henchman_IsBusy()) then --need to make more retainers than currently have
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: retainer/henchman.")
+        repeat
+            sleep(0.859)
+        until PlayerIsAvailable() 
+
+        if IsPluginEnabled("Vermaxion") then
+            yield('/xldisableplugin "Vermaxion"') --vermaxxion is useful for many things but can trigger on login and prevent henchman from working
+        end
         IPC.Questionable.AddQuestPriority("1433") --ill-gained venture (limsa)
-        yield("/henchman RetainerVocate "..tostring(no_of_retainers).." FSH MRD true") --can be changed to whatever you need
+        if not Henchman_IsBusy() then
+            yield("/henchman RetainerVocate "..tostring(no_of_retainers).." FSH MRD true") --can be changed to whatever you need
+        end
         if IPC.Questionable.IsQuestAccepted("1433") and not IPC.Questionable.IsQuestComplete("1433") and not IPC.Questionable.IsRunning() then
             yield("/qst start")
         end
+        if IPC.Questionable.IsQuestComplete("1433") and IPC.Questionable.IsRunning() and Henchman_IsBusy() then
+            yield("/qst stop")
+            yield("/ad stop")
+        end
+        if CheckPosStuck() then
+            sleep(5.861)
+            if CheckPosStuck() then --don't stop it at summoning bell
+                yield("/henchman Stop")
+            end
+        end
     elseif not FisherLevelReached() and Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: fisher leves.")
             repeat
                 sleep(0.678)
-            until Entity.Player and Player.Available
+            until PlayerIsAvailable()
             sleep(2.73)
 
             local job_swap_attempts = 0
@@ -868,13 +955,15 @@ while Addons.GetAddon("_DTR").Exists do
                 yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
             end
     elseif os.date("!*t").hour % 2 == 1 and os.date("!*t").min < 12 then
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: ocean fishing window.")
         if os.date("!*t").min >= 6 then
             DoOceanFishing()
         end
-    elseif Player.GCRankImmortalFlames < 9 then --for hunt log !add command/IPC as QST companion updates 
+    elseif Player.GCRankImmortalFlames < 9 then --for hunt log !add command/IPC as QST companion updates
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: GC rank hunt log, rank=" .. tostring(Player.GCRankImmortalFlames))
         repeat
             sleep(0.678)
-        until Entity.Player and Player.Available
+        until PlayerIsAvailable()
         sleep(2.73)
         local job_swap_attempts = 0
         local job_swapped = SwapJobFromArmoury(3, 21)
@@ -897,7 +986,7 @@ while Addons.GetAddon("_DTR").Exists do
             yield("/echo [QSTCC_Ret+FSH(I_F) Job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
         end
     else
-        yield("/e [QSTCC_Ret+FSH(IF)] No current tasks as per conditions.")
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: else (no tasks) -- relogging.")
         sleep(3)
         RelogNext()
     end
