@@ -878,7 +878,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         positionHistory = {}
         end
         -- CheckPosStuck() end
-    --[[elseif (IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers or Henchman_IsBusy()) then --need to make more retainers than currently have
+    elseif (IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers or Henchman_IsBusy()) then --need to make more retainers than currently have
         yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: retainer/henchman.")
         repeat
             sleep(0.859)
@@ -901,9 +901,33 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         if CheckPosStuck() then
             sleep(5.861)
             if CheckPosStuck() then --don't stop it at summoning bell
+                if Addons.GetAddon("SelectYesno").Ready then
+                    yield('/callback SelectYesno true 1')
+                elseif Addons.GetAddon("SelectString").Ready then
+                    -- Row containers 51001-51008 hold up to 8 visible lines; the first with empty
+                    -- text marks the end of the list, so the row before it is the last real entry
+                    -- -- its callback index is (containerId - 51000), e.g. row 51005 -> callback 5.
+                    local last_visible_id = nil
+                    for cid = 51001, 51008 do
+                        local text = Addons.GetAddon("SelectString"):GetNode(1, 3, cid, 2).Text
+                        if text == "" then
+                            break
+                        end
+                        last_visible_id = cid
+                    end
+                    if last_visible_id then
+                        yield('/callback SelectString true ' .. (last_visible_id - 51000))
+                    end
+                elseif Addons.GetAddon("_CharaMakeTitle").Ready then
+                    yield('/callback _CharaMakeTitle true -1')
+                    yield('/waitaddon "SelectYesno"')
+                    if Addons.GetAddon("SelectYesno").Ready then
+                        yield('/callback SelectYesno true 0')
+                    end
+                end
                 yield("/henchman Stop")
             end
-        end]]
+        end
     elseif not FisherLevelReached() and Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
             yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: fisher leves.")
             repeat
