@@ -22,7 +22,7 @@ local debug = true
 local FISHER_TARGET_LEVEL = 90
 local no_of_retainers = 2
 
-local hunt_log_queue_active = true --SET THIS MANUALLY
+local hunt_log_queue_active = false --SET THIS MANUALLY
 
 function HasFishAndLeves()
     return false --!will need to check inventory for black sole and the rest and leves
