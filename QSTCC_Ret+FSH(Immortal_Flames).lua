@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.1
+version: 1.5.2
 triggers:
 - onlogin
 - onterritorychange
@@ -1362,6 +1362,11 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         until IsPlayerAvailable()
         sleep(2.73)
 
+        -- Used to decorrelate this character's random behavior below from every other
+        -- character's -- computed once up front so both the post-gear stagger and the
+        -- fishing-spot jitter reuse the same value.
+        local fish_cid = Entity.Player and Entity.Player.ContentId or 0
+
         local job_swap_attempts = 0
         local job_swapped = SwapJobFromArmoury(18)
         while not job_swapped and job_swap_attempts < 4 do
@@ -1372,6 +1377,19 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
             sleep(1.358)
             job_swapped = SwapJobFromArmoury(18)
         end
+        if job_swapped then
+            -- Re-seed right here rather than trusting whatever seed the file-load-time
+            -- math.randomseed(os.time()) landed on (that call may have run before Entity.Player
+            -- existed, and os.time() alone would collide if multiple clients reach this branch
+            -- within the same second) -- os.time() + fish_cid guarantees distinct characters get
+            -- distinct draws even when launched simultaneously.
+            math.randomseed(os.time() + fish_cid)
+            local stagger_seconds = math.random(1, 300)
+            if debug then
+                yield("/echo [QSTCC_Ret+FSH(I_F) Staggering fishing start by " .. stagger_seconds .. "s after equipping gear.")
+            end
+            sleep(stagger_seconds)
+        end
         yield("/li fisher")
         local counter = 0
         repeat
@@ -1379,15 +1397,24 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
             counter = counter+1
         until (not IPC.Lifestream.IsBusy() and IsPlayerAvailable()) or counter > 15
         sleep(3.381)
-        MoveTo(-200.2, 8, 107.5)
+        -- Small per-character offset so multiple simultaneously-fishing characters don't stack on
+        -- the exact same tile (very conspicuous with several game clients running at once).
+        -- Derived deterministically from ContentId rather than math.random, so there's no risk of
+        -- two clients launched within the same second landing on an identical "random" offset --
+        -- every distinct character gets a different, always-the-same-for-that-character spot,
+        -- comfortably inside the fishing hole (the three hardcoded waypoints already span ~2.7
+        -- yalms, so a max ~0.8 yalm nudge stays well within casting range).
+        local fish_jitter_x = ((fish_cid % 17) - 8) * 0.1
+        local fish_jitter_z = ((math.floor(fish_cid / 17) % 17) - 8) * 0.1
+        MoveTo(-200.2 + fish_jitter_x, 8, 107.5 + fish_jitter_z)
         sleep(0.138)
-        MoveTo(-200.2, 8, 107.5)
+        MoveTo(-200.2 + fish_jitter_x, 8, 107.5 + fish_jitter_z)
         sleep(0.139)
-        MoveTo(-202.5, 8, 106.1)
+        MoveTo(-202.5 + fish_jitter_x, 8, 106.1 + fish_jitter_z)
         yield("/ahbait Versatile Lure")
         sleep(1.386)
         yield("/ahstart")
-        for i=1, 60 do
+        for i=1, 45 do
             sleep(13.82)
         end
         while Svc.Condition[6] or not IsPlayerAvailable() do
