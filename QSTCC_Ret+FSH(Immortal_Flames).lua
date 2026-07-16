@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.2
+version: 1.5.3
 triggers:
 - onlogin
 - onterritorychange
@@ -592,6 +592,12 @@ function RelogNext()
     if next_cid == pass_start_cid then
         yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: full rotation complete, every character has been processed. Stopping.")
         ClearRotationState()
+        yield("/logout")
+        sleep(3)
+        if Addons.GetAddon("SelectYesno").Ready then
+            sleep(0.1)
+            yield("/click SelectYesno Yes")
+        end
         return false
     end
 
@@ -1384,7 +1390,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
             -- within the same second) -- os.time() + fish_cid guarantees distinct characters get
             -- distinct draws even when launched simultaneously.
             math.randomseed(os.time() + fish_cid)
-            local stagger_seconds = math.random(1, 300)
+            local stagger_seconds = math.random(1, 60)
             if debug then
                 yield("/echo [QSTCC_Ret+FSH(I_F) Staggering fishing start by " .. stagger_seconds .. "s after equipping gear.")
             end
@@ -1414,8 +1420,11 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         yield("/ahbait Versatile Lure")
         sleep(1.386)
         yield("/ahstart")
-        for i=1, 45 do
+        for i=1, 60 do --!add level requierement too
             sleep(13.82)
+            if Player.GetJob(18).Level > 14 then
+                break
+            end
         end
         while Svc.Condition[6] or not IsPlayerAvailable() do
             yield("/hold S")
