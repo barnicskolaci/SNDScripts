@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.3
+version: 1.5.4
 triggers:
 - onlogin
 - onterritorychange
@@ -178,6 +178,27 @@ function StartGuildLeveFromToDoList(matchText)
         yield("/click SelectYesno Yes")
     end
     return true
+end
+
+function GetLeveAllowances()
+    local was_open = Addons.GetAddon("Journal").Ready
+    if not was_open then
+        yield("/send J")
+        yield('/waitaddon "Journal"')
+        sleep(0.1)
+    end
+
+    local allowances = nil
+    if Addons.GetAddon("Journal").Ready then
+        local text = Addons.GetAddon("Journal"):GetNode(1, 33, 35, 2).Text
+        allowances = tonumber(text:match("%d+"))
+    end
+
+    if not was_open then
+        yield('/send ESCAPE')
+    end
+
+    return allowances
 end
 
 function IsInSanctuary()
@@ -1419,8 +1440,9 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         MoveTo(-202.5 + fish_jitter_x, 8, 106.1 + fish_jitter_z)
         yield("/ahbait Versatile Lure")
         sleep(1.386)
+        yield("/vnav stop")
         yield("/ahstart")
-        for i=1, 60 do --!add level requierement too
+        for cycle=1, 60 do --!add level requierement too
             sleep(13.82)
             if Player.GetJob(18).Level > 14 then
                 break
@@ -1428,7 +1450,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         end
         while Svc.Condition[6] or not IsPlayerAvailable() do
             yield("/hold S")
-            sleep(0.139)
+            sleep(1.453)
             yield("/release S")
             sleep(0.140)
         end
