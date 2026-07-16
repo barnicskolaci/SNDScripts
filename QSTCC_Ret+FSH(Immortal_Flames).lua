@@ -1417,7 +1417,9 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
             end
             sleep(stagger_seconds)
         end
-        yield("/li fisher")
+        if not IsPlayerCloseTo(-200.2, 8, 107.5) or TerritoryType()~=129 then
+            yield("/li fisher")
+        end
         local counter = 0
         repeat
             sleep(1.376)
