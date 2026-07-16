@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.4.5
+version: 1.5.1
 triggers:
 - onlogin
 - onterritorychange
@@ -24,6 +24,15 @@ local no_of_retainers = 2
 
 local hunt_log_queue_active = false --SET THIS MANUALLY
 
+function MoveTo(x,y,z)
+    local movecounter = 0
+    IPC.vnavmesh.PathfindAndMoveTo(Vector3(x, y, z), false)
+    while IPC.vnavmesh.IsRunning() and movecounter < 20 do
+        sleep(1.437)
+        movecounter = movecounter + 1
+    end
+end
+
 function HasFishAndLeves()
     return false --!will need to check inventory for black sole and the rest and leves
 end
@@ -42,8 +51,8 @@ function IsPluginEnabled(name)
     return false
 end
 
-function PlayerIsAvailable()
-    if Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[45] and not Svc.Condition[51] and not Svc.Condition[58] and not Svc.Condition[78] and not Svc.Condition[50] then
+function IsPlayerAvailable()
+    if Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[45] and not Svc.Condition[51] and not Svc.Condition[58] and not Svc.Condition[78] and not Svc.Condition[50] and not Svc.Condition[32] then
         return true
     else
         return false
@@ -51,7 +60,7 @@ function PlayerIsAvailable()
 end
 
 function FisherLevelReached()
-    return PlayerIsAvailable() and Player.GetJob(18).Level >= FISHER_TARGET_LEVEL
+    return IsPlayerAvailable() and Player.GetJob(18).Level >= FISHER_TARGET_LEVEL
 end
 
 function TerritoryType()
@@ -211,11 +220,11 @@ function EquipRecommendedGear()
     end
     repeat
         sleep(0.1)
-    until PlayerIsAvailable() and not Svc.Condition[26]
+    until IsPlayerAvailable() and not Svc.Condition[26]
 
     local character_open_attempts = 0
     repeat
-        if PlayerIsAvailable() and not Svc.Condition[26] then
+        if IsPlayerAvailable() and not Svc.Condition[26] then
             yield("/character")
         end
         sleep(0.25)
@@ -252,14 +261,14 @@ end
 local positionHistory = {}
 
 function CheckPosStuck()
-    if not PlayerIsAvailable() then
+    if not IsPlayerAvailable() then
         return false
     end
     
     local currentPos = Entity.Player.Position
     
     -- Handle nil position and combat/casting states
-    if currentPos == nil or not PlayerIsAvailable() or Entity.Player.IsInCombat then --i really hope nothing will periodically trigger these while the toon is still stuck
+    if currentPos == nil or not IsPlayerAvailable() or Entity.Player.IsInCombat then --i really hope nothing will periodically trigger these while the toon is still stuck
         positionHistory = {}
         return false
     end
@@ -442,7 +451,7 @@ function SwapJobFromArmoury(...)
         return false
     end
 
-    if not PlayerIsAvailable() or Player.Job == nil then
+    if not IsPlayerAvailable() or Player.Job == nil then
         yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: Player.Job not available.")
         return false
     end
@@ -471,7 +480,7 @@ function SwapJobFromArmoury(...)
         if item and not item.IsEmpty then
             item:MoveItemSlotToSlot(InventoryType.EquippedItems, 0)
             sleep(0.5)
-            if PlayerIsAvailable() and Player.Job then
+            if IsPlayerAvailable() and Player.Job then
                 for _, jobId in ipairs(targetJobIds) do
                     if Player.Job.Id == jobId then
                         EquipRecommendedGear()
@@ -487,7 +496,7 @@ function SwapJobFromArmoury(...)
 end
 
 --MRD 1, 5, 10; Halatali, Pvp, Cutter's cry, Swiftperch and Costa Del Sol leves, FSH + Ocean Fishing quests
-local quests_needed = {"311", "313", "314", "697", "1106", "921", "693", "696", "1134", "1107", "1108", "3843"} --no 1433 ill-venture(limsa) because henchman will do it
+local quests_needed = {"311", "313", "314", "697", "1106", "921", "693", "696", "1134", "1107", "1108", "3843"} --no 1433 ill-venture(limsa), handled separately in the retainer-creation branch below
 local completed_quests = {}
 
 -- Marks any not-yet-logged quest in quests_needed as complete if Questionable now reports it done.
@@ -600,31 +609,479 @@ function RelogNext()
     return true
 end
 
-function Henchman_IsBusy()
-    if henchman_is_busy_subscriber == nil then
-        local methods = Svc.PluginInterface:GetType():GetMethods()
-        local boolType = luanet.make_array(Type, { Type.GetType("System.Boolean") })
-        local method = nil
-        for i = 0, methods.Length - 1 do
-            local m = methods[i]
-            if m.Name == "GetIpcSubscriber" and m.IsGenericMethodDefinition and m:GetGenericArguments().Length == 1 then
-                method = m:MakeGenericMethod(boolType)
-                break
-            end
-        end
-        if method == nil then return false end
+--[[###################################################################################################################################
+##  RetainerMaker: native SND reimplementation of Henchman's RetainerVocate feature (see SNDScripts/RetainerMaker.lua for the        ##
+##  full design notes -- decompiled Henchman.dll v2.0.6.6 flow, known behavior gap around race/gender/clan/look selection, etc.)      ##
+###################################################################################################################################]]
 
-        local ok, subscriber = pcall(function()
-            return method:Invoke(Svc.PluginInterface, luanet.make_array(Object, { "Henchman.IsBusy" }))
-        end)
-        if not ok or subscriber == nil then return false end
-        henchman_is_busy_subscriber = subscriber
+-- Per-job starter gear (unchanged ARR "Weathered" items) and the ClassJob sheet
+-- name SelectString shows when assigning a retainer's job. Item IDs and vendor
+-- categorization carried over as-is from the original Retainer Maker.lua.
+local RETAINER_JOB_DATA = {
+    GLA = { class = "DoW", itemID = 1601, jobName = "Gladiator" },    -- Weathered Shortsword
+    PGL = { class = "DoW", itemID = 1680, jobName = "Pugilist" },     -- Weathered Hora
+    MRD = { class = "DoW", itemID = 1749, jobName = "Marauder" },     -- Weathered War Axe
+    LNC = { class = "DoW", itemID = 1819, jobName = "Lancer" },       -- Weathered Spear
+    ROG = { class = "DoW", itemID = 7952, jobName = "Rogue" },        -- Weathered Daggers
+    ARC = { class = "DoW", itemID = 1889, jobName = "Archer" },       -- Weathered Shortbow
+    CNJ = { class = "DoM", itemID = 1995, jobName = "Conjurer" },     -- Weathered Cane
+    THM = { class = "DoM", itemID = 2055, jobName = "Thaumaturge" },  -- Weathered Scepter
+    ACN = { class = "DoM", itemID = 2142, jobName = "Arcanist" },     -- Weathered Grimoire
+    MIN = { class = "DoL", itemID = 2519, jobName = "Miner" },        -- Weathered Pickaxe
+    BTN = { class = "DoL", itemID = 2545, jobName = "Botanist" },     -- Weathered Hatchet
+    FSH = { class = "DoL", itemID = 2571, jobName = "Fisher" },       -- Weathered Fishing Rod
+}
+
+function GetRetainerJobDetails(job)
+    return RETAINER_JOB_DATA[job]
+end
+
+-- Generic SelectString entry finder, by exact visible text. Reuses the node-ID
+-- chain QSTCC_RET's own henchman-stuck-check fallback already established as
+-- correct for the CURRENT SelectString addon layout (root -> 1 -> list
+-- component 3 -> row containers 51001-51008 -> text node 2), NOT the old
+-- vac_functions-era GetNodeText("SelectString", 2, i, 3) addressing, which
+-- targeted a different (older) helper's own component-index convention.
+function FindSelectStringEntry(matchText)
+    local selectStringAddon = Addons.GetAddon("SelectString")
+    if not selectStringAddon.Ready then
+        return nil
+    end
+    for containerId = 51001, 51008 do
+        local text = selectStringAddon:GetNode(1, 3, containerId, 2).Text
+        if text == "" then
+            break
+        end
+        if text == matchText then
+            return containerId - 51000
+        end
+    end
+    return nil
+end
+
+-- Ported from Henchman.Helpers.NameGenerator (decompiled Henchman.dll v2.0.6.6,
+-- internal static class NameGenerator) -- this is the ACTUAL algorithm Henchman
+-- uses whenever no explicit retainer name is configured: GeneratePrefixMiddle(1,3)
+-- (one random Prefix syllable + 1-2 random Middle syllables, straight
+-- concatenation, no separators) followed by one random gendered Suffix. No length
+-- cap, no forbidden-substring filtering, no capitalization step (Prefix entries
+-- are already capitalized, Middle/Suffix entries lowercase) -- reproduced exactly
+-- as decompiled, not the old script's own from-scratch generator.
+--
+-- Henchman picks masculine vs. feminine purely from Configuration.RetainerGender
+-- (a setting IT controls, since it also fires the race/gender selection event).
+-- This library doesn't select gender at all (see file header), so which suffix
+-- list gets used is a random coin flip instead -- purely cosmetic. FFXIV's
+-- retainer-naming step does not enforce name/gender concordance (confirmed:
+-- Henchman submits config-derived names blind and never checks for a mismatch;
+-- no validation of that kind exists anywhere in its retainer-creation flow).
+math.randomseed(os.time())
+
+local RETAINER_NAME_PREFIX = {
+    "A", "Ad", "Al", "Am", "An", "Ar", "Be", "Bl", "Br", "Ch",
+    "Cl", "De", "Ed", "El", "Em", "Fa", "Fl", "Fr", "Gr", "Jo",
+    "Ki", "La", "Ma", "Na", "O", "Ol", "Or", "Pa", "Re", "Sh",
+    "Si", "Ta", "Th", "Tr", "Va"
+}
+local RETAINER_NAME_MIDDLE = {
+    "ad", "al", "am", "an", "ar", "as", "at", "el", "en", "er",
+    "es", "et", "ei", "il", "in", "ir", "ol", "on", "or", "os",
+    "ur"
+}
+local RETAINER_NAME_FEMININE_SUFFIX = {
+    "a", "ina", "ie", "ara", "eera", "aea", "osa", "ya", "tha", "aya",
+    "ana", "ielle", "ia", "ora", "iss", "ea", "ene", "ice", "ra", "ka",
+    "nira", "wen", "elle", "lina", "wyn", "lora", "vina", "yn"
+}
+local RETAINER_NAME_MASCULINE_SUFFIX = {
+    "an", "nik", "anar", "ton", "or", "ant", "er", "dir", "ius", "ric",
+    "no", "ien", "ard", "len", "ian", "en", "o", "as", "on", "rus",
+    "us"
+}
+
+-- Mirrors NameGenerator.GeneratePrefixMiddle(1, 3): C#'s Random.Next(1,3) is
+-- exclusive of its upper bound (always 1 or 2) -- Lua's math.random(1,2) is the
+-- direct equivalent (inclusive on both ends).
+local function GeneratePrefixMiddle()
+    local syllables = math.random(1, 2)
+    local text = RETAINER_NAME_PREFIX[math.random(#RETAINER_NAME_PREFIX)]
+    for _ = 1, syllables do
+        text = text .. RETAINER_NAME_MIDDLE[math.random(#RETAINER_NAME_MIDDLE)]
+    end
+    return text
+end
+
+function GenerateRetainerName()
+    if math.random(0, 1) == 0 then
+        return GeneratePrefixMiddle() .. RETAINER_NAME_MASCULINE_SUFFIX[math.random(#RETAINER_NAME_MASCULINE_SUFFIX)]
+    else
+        return GeneratePrefixMiddle() .. RETAINER_NAME_FEMININE_SUFFIX[math.random(#RETAINER_NAME_FEMININE_SUFFIX)]
+    end
+end
+
+-- Moves to and interacts with the Retainer Vocate ("Frydwyb", Limsa) and hires
+-- one new retainer slot. Returns false once the game reports no slots are left
+-- (SelectYesno never appears and the player becomes interactable again instead
+-- of a chargen screen opening) -- the practical, Lua-reachable equivalent of
+-- Henchman's CheckForRetainerEntitlement (MaxRetainerEntitlement == RetainerCount),
+-- which reads RetainerManager natively and has no SND Lua equivalent.
+function GoToRetainerVocateAndHire()
+    MoveAndInteract("Frydwyb")
+    yield('/waitaddon "SelectString"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if not Addons.GetAddon("SelectString").Ready then
+        yield("/echo [RetainerMaker] SelectString never opened after interacting with the Retainer Vocate.")
+        return false
     end
 
-    local ok, result = pcall(function() return henchman_is_busy_subscriber:InvokeFunc() end)
-    if not ok then return false end
-    return result
+    local hireIdx = FindSelectStringEntry("Hire a retainer.")
+    if hireIdx == nil then
+        yield("/echo [RetainerMaker] Could not find \"Hire a retainer.\" in the Retainer Vocate's SelectString.")
+        yield('/callback "SelectString" true -1')
+        return false
+    end
+    yield('/callback "SelectString" true ' .. hireIdx)
+
+    local wait_attempts = 0
+    repeat
+        sleep(0.2)
+        wait_attempts = wait_attempts + 1
+    until Addons.GetAddon("SelectYesno").Ready or IsPlayerAvailable() or wait_attempts >= 50
+
+    if not Addons.GetAddon("SelectYesno").Ready then
+        if debug then
+            yield("/echo [RetainerMaker] No more retainer slots available on this character.")
+        end
+        return false
+    end
+
+    sleep(0.1)
+    yield("/click SelectYesno Yes")
+    yield('/waitaddon "_CharaMakeTitle"')
+    return Addons.GetAddon("_CharaMakeTitle").Ready
 end
+
+-- Drives one retainer through character creation from _CharaMakeTitle to a
+-- named, closed RetainerCharacter window. Deliberately skips race/gender/clan/
+-- look (see file header) and accepts the panel's default -- goes straight from
+-- _CharaMakeTitle to firing _CharaMakeFeature's confirmed-working Finish (100).
+function CreateSingleRetainer()
+    sleep(1) -- extra settle time, mirrors the original script's post-CharaMakeTitle safety wait
+
+    yield('/waitaddon "_CharaMakeFeature"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if not Addons.GetAddon("_CharaMakeFeature").Ready then
+        yield("/echo [RetainerMaker] _CharaMakeFeature never became ready, aborting this retainer.")
+        return false
+    end
+    yield('/callback "_CharaMakeFeature" true 100')
+
+    -- The game runs a short, currently-unverified confirmation/personality flow
+    -- before naming. Drain any SelectYesno prompts generically (always Yes)
+    -- rather than hardcoding an exact popup count/order that may not match the
+    -- current character-creation UI (see file header -- this is the same UI
+    -- overhaul that split race/gender/clan/look into separate addons).
+    local drain_attempts = 0
+    while not Addons.GetAddon("SelectString").Ready and not Addons.GetAddon("InputString").Ready and drain_attempts < 30 do
+        if Addons.GetAddon("SelectYesno").Ready then
+            sleep(0.1)
+            yield("/click SelectYesno Yes")
+        end
+        sleep(0.3)
+        drain_attempts = drain_attempts + 1
+    end
+
+    if Addons.GetAddon("SelectString").Ready then
+        yield('/callback "SelectString" true 0') -- personality choice is cosmetic only, first option
+        yield('/waitaddon "SelectYesno"')
+        if Addons.GetAddon("SelectYesno").Ready then
+            sleep(0.1)
+            yield("/click SelectYesno Yes")
+        end
+    end
+
+    yield('/waitaddon "InputString"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if not Addons.GetAddon("InputString").Ready then
+        yield("/echo [RetainerMaker] InputString never appeared, aborting this retainer.")
+        return false
+    end
+
+    local named = false
+    local name_attempts = 0
+    while not named and name_attempts < 10 do
+        local retainer_name = GenerateRetainerName()
+        if debug then
+            yield("/echo [RetainerMaker] Attempting to name retainer " .. retainer_name)
+        end
+        yield('/callback "InputString" true 0 ' .. retainer_name)
+        yield('/waitaddon "SelectYesno"')
+        if Addons.GetAddon("SelectYesno").Ready then
+            sleep(0.1)
+            yield("/click SelectYesno Yes")
+        end
+        sleep(0.3)
+        if not Addons.GetAddon("InputString").Ready then
+            named = true
+        else
+            name_attempts = name_attempts + 1
+        end
+    end
+    if not named then
+        yield("/echo [RetainerMaker] Failed to name retainer after " .. name_attempts .. " attempts.")
+        return false
+    end
+
+    yield('/waitaddon "RetainerCharacter"')
+    if Addons.GetAddon("RetainerCharacter").Ready then
+        sleep(0.3)
+        yield('/callback "RetainerCharacter" true -1')
+    end
+    return true
+end
+
+-- Creates up to `amount` new retainers on the current character. Stops early
+-- (returns the count actually created) once GoToRetainerVocateAndHire reports
+-- no slots are left. Mirrors Henchman's CreateRetainers loop.
+function CreateRetainers(amount)
+    local created = 0
+    for _ = 1, amount do
+        if not GoToRetainerVocateAndHire() then
+            break
+        end
+        if CreateSingleRetainer() then
+            created = created + 1
+        end
+        sleep(0.5)
+    end
+    return created
+end
+
+-- Targets the correct Weathered-gear vendor for `job_details.class`, buys one
+-- of `job_details.itemID`, and returns true on success. Finds the item by ID
+-- inside the live Shop addon (AtkValues[2] = entry count, AtkValues[441 + i] =
+-- item ID for entry i, per ECommons' AddonMaster.Shop) rather than trusting a
+-- fixed shop-slot index -- more robust than the original script's hardcoded
+-- store_location if the vendor's item ordering ever changes.
+function BuyRetainerGear(job_details)
+    if job_details.class == "DoW" or job_details.class == "DoM" then
+        MoveAndInteract("Faezghim")
+    else
+        MoveAndInteract("Syneyhil")
+    end
+
+    yield('/waitaddon "SelectIconString"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if not Addons.GetAddon("SelectIconString").Ready then
+        yield("/echo [RetainerMaker] SelectIconString never opened for the " .. job_details.jobName .. " vendor.")
+        return false
+    end
+    -- Faezghim (DoW/DoM vendor) offers two categories; Syneyhil (DoL vendor)
+    -- offers one. This index split is carried over from the original script --
+    -- unverified for the single-category DoL case since SND has no Lua-exposed
+    -- way to read SelectIconString's real entry count (unlike Shop's AtkValues).
+    local icon = (job_details.class == "DoW") and 0 or 1
+    yield('/callback "SelectIconString" true ' .. icon)
+
+    yield('/waitaddon "SelectString"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if Addons.GetAddon("SelectString").Ready then
+        yield('/callback "SelectString" true 0')
+    end
+
+    yield('/waitaddon "Shop"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if not Addons.GetAddon("Shop").Ready then
+        yield("/echo [RetainerMaker] Shop never opened for " .. job_details.jobName .. ", aborting purchase.")
+        return false
+    end
+
+    local shop = Addons.GetAddon("Shop")
+    local numEntries = tonumber(shop:GetAtkValue(2).ValueString) or 0
+    local slot = nil
+    for i = 0, numEntries - 1 do
+        local itemId = tonumber(shop:GetAtkValue(441 + i).ValueString)
+        if itemId == job_details.itemID then
+            slot = i
+            break
+        end
+    end
+
+    if slot == nil then
+        yield("/echo [RetainerMaker] Could not find item " .. job_details.itemID .. " (" .. job_details.jobName .. ") in the shop list.")
+        yield('/callback "Shop" true -1')
+        return false
+    end
+
+    yield('/callback "Shop" true 0 ' .. slot .. ' 1')
+    sleep(0.3)
+    yield('/callback "Shop" true -1')
+
+    yield('/waitaddon "SelectString"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if Addons.GetAddon("SelectString").Ready then
+        -- Farewell/close dialogue option -- index carried over from the
+        -- original script, unverified against the current text. QSTCC_RET's
+        -- own AddonHandler will mop up a stray SelectString here if this is wrong.
+        yield('/callback "SelectString" true 5')
+    end
+    return true
+end
+
+-- Equips `itemID` into the currently-open RetainerCharacter's main-hand slot,
+-- via a direct inventory-slot move -- same technique as QSTCC_RET's own
+-- armoury job-swap and Questionable's own EquipItem.cs, no UI simulation.
+function EquipRetainerWeapon(itemID)
+    local InventoryType = luanet.import_type("FFXIVClientStructs.FFXIV.Client.Game.InventoryType")
+    local item = Inventory.GetInventoryItem(itemID)
+    if not item then
+        yield("/echo [RetainerMaker] Item " .. itemID .. " not found in inventory, cannot equip.")
+        return false
+    end
+    item:MoveItemSlotToSlot(InventoryType.RetainerEquippedItems, 0)
+    sleep(0.3)
+    return true
+end
+
+-- Finds the RetainerList position of the first retainer AutoRetainer reports
+-- with no class assigned yet (Job == 0). Reads AutoRetainer's own cached
+-- retainer data rather than RetainerManager natively (not exposed to Lua) --
+-- QSTCC_RET already relies on this same IPC call/field for its own retainer count checks.
+function FindUnassignedRetainerIndex()
+    local data = IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData
+    for i = 0, data.Count - 1 do
+        if data[i].Job == 0 then
+            return i
+        end
+    end
+    return nil
+end
+
+-- Assigns a class and equips the starter weapon for each entry in `jobs`
+-- ({ {job = "FSH", amount = N}, ... }), against whichever unassigned retainers
+-- are sitting in RetainerList (created by CreateRetainers beforehand). Mirrors
+-- Henchman's AssignRetainerClassEquipMain step-for-step, including its
+-- "Quit." exit back to RetainerList between retainers rather than a blind close.
+--[[function AssignRetainerClassesAndEquip(jobs) -- "chunk"]:1035: <goto continue_retainer> at line 983 jumps into the scope of local 'jobIdx'
+    MoveAndInteract("Summoning Bell")
+    yield('/waitaddon "RetainerList"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if not Addons.GetAddon("RetainerList").Ready then
+        yield("/echo [RetainerMaker] RetainerList never opened, aborting class assignment.")
+        return
+    end
+
+    for _, retainer in ipairs(jobs) do
+        local job_details = GetRetainerJobDetails(retainer.job)
+        if not job_details then
+            yield("/echo [RetainerMaker] Unknown job '" .. tostring(retainer.job) .. "', skipping.")
+        else
+            for _ = 1, retainer.amount do
+                local pos = FindUnassignedRetainerIndex()
+                if pos == nil then
+                    yield("/echo [RetainerMaker] No unassigned retainer left for " .. job_details.jobName .. ".")
+                    break
+                end
+
+                yield('/callback "RetainerList" true 2 ' .. pos .. ' 0 0')
+                yield('/waitaddon "SelectString"')
+                sleep(0.4) -- RetainerList -> SelectString is a fresh open, but pad it anyway for consistency
+
+                local assignIdx = FindSelectStringEntry("Assign retainer class.")
+                if assignIdx == nil then
+                    yield("/echo [RetainerMaker] Could not find \"Assign retainer class.\" for retainer at position " .. pos .. ".")
+                    goto continue_retainer
+                end
+                yield('/callback "SelectString" true ' .. assignIdx)
+                -- SelectString stays open/visible across this transition (its content is refreshed
+                -- in place to the job list), so /waitaddon can return instantly without the new
+                -- content having actually populated yet -- pad with an explicit settle delay.
+                yield('/waitaddon "SelectString"')
+                sleep(0.4)
+
+                local jobIdx = FindSelectStringEntry(job_details.jobName)
+                if jobIdx == nil then
+                    yield("/echo [RetainerMaker] Could not find job '" .. job_details.jobName .. "' in the class list.")
+                    goto continue_retainer
+                end
+                yield('/callback "SelectString" true ' .. jobIdx)
+                yield('/waitaddon "SelectYesno"')
+                if Addons.GetAddon("SelectYesno").Ready then
+                    sleep(0.1)
+                    yield("/click SelectYesno Yes")
+                end
+
+                -- Same same-addon-refresh risk as above -- SelectString may stay visible under/behind
+                -- SelectYesno rather than closing, so pad here too before reading its content.
+                yield('/waitaddon "SelectString"')
+                sleep(0.4)
+                local gearIdx = FindSelectStringEntry("View retainer attributes and gear. (No main arm equipped)")
+                if gearIdx == nil then
+                    yield("/echo [RetainerMaker] Could not find the retainer gear entry after class assignment.")
+                    goto continue_retainer
+                end
+                yield('/callback "SelectString" true ' .. gearIdx)
+                yield('/waitaddon "RetainerCharacter"')
+                if Addons.GetAddon("RetainerCharacter").Ready then
+                    sleep(0.5)
+                    EquipRetainerWeapon(job_details.itemID)
+                    sleep(0.3)
+                    yield('/callback "RetainerCharacter" true -1')
+                end
+
+                -- Highest-risk transition in this whole flow: fires right after closing
+                -- RetainerCharacter (/callback "RetainerCharacter" true -1) with no intervening
+                -- game-state change to guarantee /waitaddon actually blocked -- this is exactly
+                -- the two-synthetic-events-with-no-frame-delay shape that causes a native UI
+                -- reentrancy crash (see reference_ui_reentrancy_crashes). Pad generously.
+                yield('/waitaddon "SelectString"')
+                sleep(0.5)
+                local quitIdx = FindSelectStringEntry("Quit.")
+                if quitIdx then
+                    yield('/callback "SelectString" true ' .. quitIdx)
+                end
+
+                ::continue_retainer::
+                sleep(0.5)
+            end
+        end
+    end
+
+    yield('/waitaddon "RetainerList"')
+    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    if Addons.GetAddon("RetainerList").Ready then
+        yield('/callback "RetainerList" true -1')
+    end
+end]]
+
+-- Entry point: creates retainers for the CURRENT character to cover `jobs`
+-- ({ {job = "FSH", amount = 2}, ... }), buys and equips each job's starter
+-- weapon, and assigns classes. Does NOT touch venture questing -- QSTCC_RET's
+-- existing Questionable-driven branch already owns that (quest "1433").
+-- Mirrors Henchman's RunFullCreation minus StartVentureQuest (out of scope --
+-- see file header). Returns the number of retainers actually created.
+function RunRetainerCreation(jobs)
+    local total_amount = 0
+    for _, retainer in ipairs(jobs) do
+        total_amount = total_amount + retainer.amount
+    end
+
+    local created = CreateRetainers(total_amount)
+    if created > 0 then
+        for _, retainer in ipairs(jobs) do
+            local job_details = GetRetainerJobDetails(retainer.job)
+            if job_details then
+                BuyRetainerGear(job_details)
+            end
+        end
+        AssignRetainerClassesAndEquip(jobs)
+    elseif debug then
+        yield("/echo [RetainerMaker] No retainers were created (no free slots), skipping gear/class assignment.")
+    end
+
+    return created
+end
+
 
 --[[###################################################################################################################################
 ###########           ####             ####           #####   ###            ####                   ###################################
@@ -635,8 +1092,6 @@ end
 ###################   ####   ##############   #####   #####   ###   #####################   ###########################################
 ###########           ####             ####   ######   ####   ###   #####################   ###########################################
 #####################################################################################################################################]]
-
-
 
 
 if not debug then
@@ -653,11 +1108,15 @@ local all_quests_complete = AllQuestsComplete()
 
 repeat
     sleep(0.613)
-until PlayerIsAvailable()
+until IsPlayerAvailable()
 
-yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] Main loop entry: DTR exists=" .. tostring(Addons.GetAddon("_DTR").Exists) .. " hunt_log_queue_active=" .. tostring(hunt_log_queue_active) .. " all_quests_complete=" .. tostring(all_quests_complete))
+if debug then
+    yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] Main loop entry: DTR exists=" .. tostring(Addons.GetAddon("_DTR").Exists) .. " hunt_log_queue_active=" .. tostring(hunt_log_queue_active) .. " all_quests_complete=" .. tostring(all_quests_complete))
+end
 if hunt_log_queue_active then
-    yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] hunt_log_queue_active is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
+    if debug then
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] hunt_log_queue_active is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
+    end
 end
 
 while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_active do
@@ -665,25 +1124,29 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
     local ok_retainer_count, retainer_count = pcall(function()
         return IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count
     end)
-    yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] tick: PlayerAvail=" .. tostring(PlayerIsAvailable())
-        .. " all_quests_complete=" .. tostring(all_quests_complete)
-        .. " QstRunning=" .. tostring(IPC.Questionable.IsRunning())
-        .. " QuestId=" .. tostring(IPC.Questionable.GetCurrentQuestId())
-        .. " RetainerCount=" .. tostring(ok_retainer_count and retainer_count or "ERR")
-        .. " HenchmanBusy=" .. tostring(Henchman_IsBusy())
-        .. " GCRank=" .. tostring(Player.GCRankImmortalFlames)
-        .. " PosStuck=" .. tostring(CheckPosStuck()))
+    if debug then
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] tick: PlayerAvail=" .. tostring(IsPlayerAvailable())
+            .. " all_quests_complete=" .. tostring(all_quests_complete)
+            .. " QstRunning=" .. tostring(IPC.Questionable.IsRunning())
+            .. " QuestId=" .. tostring(IPC.Questionable.GetCurrentQuestId())
+            .. " RetainerCount=" .. tostring(ok_retainer_count and retainer_count or "ERR")
+            .. " GCRank=" .. tostring(Player.GCRankImmortalFlames)
+            .. " PosStuck=" .. tostring(CheckPosStuck()))
+    end
     if all_quests_complete and IPC.Questionable.IsRunning() and IPC.Questionable.GetCurrentQuestId() ~= "1433" then
         yield("/qst stop")
     end
-    if not PlayerIsAvailable() then
-        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: player not available, skipping tick.")
+    if not IsPlayerAvailable() then
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: player not available, skipping tick.")
+        end
         -- Player busy/transitioning (casting, cutscene, loading, etc.) -- skip this tick entirely
-        -- rather than let a stale/transient read of retainer count or Henchman_IsBusy() fall
-        -- through to an unrelated branch (e.g. relogging away from a character that still needs
-        -- retainer/Henchman work done).
+        -- rather than let a stale/transient read of retainer count fall through to an unrelated
+        -- branch (e.g. relogging away from a character that still needs retainer work done).
     elseif not all_quests_complete then
-        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: quest handling.")
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: quest handling.")
+        end
         UpdateCompletedQuests()
         all_quests_complete = AllQuestsComplete()
         --local hunt_target = MatchHuntObjective(QuestText())
@@ -713,7 +1176,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
             yield('/vbm ai off')
             yield('/vbm cfg aiconfig forbidactions true')
         end
-        if CheckPosStuck() and PlayerIsAvailable() then
+        if CheckPosStuck() and IsPlayerAvailable() then
             local counter = 0
             --quest-related stuck checks
             local questId = IPC.Questionable.GetCurrentQuestId()
@@ -735,7 +1198,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
                     yield("/click SelectYesno Yes")
                 end
                 sleep(1.305)
-                while not PlayerIsAvailable() do
+                while not IsPlayerAvailable() do
                     sleep(0.307)
                 end
                 sleep(1.309)
@@ -749,12 +1212,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
                     if Addons.GetAddon("JournalDetail").Ready then
                         yield("/callback JournalDetail true 3 556")
                     end
-                    IPC.vnavmesh.PathfindAndMoveTo(Vector3(604.7, 6.5, 482), false)
-                    while IPC.vnavmesh.IsRunning() and counter < 20 do
-                        sleep(1.437)
-                        counter = counter + 1
-                    end
-                    counter = 0
+                    MoveTo(604.7, 6.5, 482)
                 end
                 if FindToDoListRow("Report to") then
                     if debug then
@@ -799,12 +1257,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
                     if Addons.GetAddon("JournalDetail").Ready then
                         yield("/callback JournalDetail true 3 629")
                     end
-                    IPC.vnavmesh.PathfindAndMoveTo(Vector3(514.7, 9.7, 376.2), false)
-                    while IPC.vnavmesh.IsRunning() and counter < 20 do
-                        sleep(1.488)
-                        counter = counter + 1
-                    end
-                    counter = 0
+                    MoveTo(514.7, 9.7, 376.2)
                 elseif IsPlayerCloseTo(514.724, 9.702966, 376.21405) or Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then
                     if not Addons.GetAddon("_ToDoList"):GetNode(1,4).IsVisible then 
                         StartGuildLeveFromToDoList("Report to") --leve handler
@@ -831,7 +1284,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
                             sleep(0.145)
                             while IPC.vnavmesh.IsRunning() do
                                 MoveAndInteract("Destination")
-                                sleep(1)
+                                sleep(1.273)
                             end
                         end
                     end
@@ -858,7 +1311,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
                     end
                 end
             end
-            if PlayerIsAvailable() and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not all_quests_complete then --pretty much hail merry attempt
+            if IsPlayerAvailable() and not Svc.Condition[26] and not Svc.Condition[34] and not Svc.Condition[56] and not IPC.Lifestream.IsBusy() and not all_quests_complete then --pretty much hail merry attempt
                 yield("/vbm ai off")
                 yield("/vbm ar clear")
                 yield('/vbm cfg aiconfig ForbidMovement True')
@@ -878,71 +1331,90 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         positionHistory = {}
         end
         -- CheckPosStuck() end
-    elseif (IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers or Henchman_IsBusy()) then --need to make more retainers than currently have
-        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: retainer/henchman.")
+    --[[elseif IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers then --!needs fixing, including functions
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: retainer creation.")
+        end
         repeat
             sleep(0.859)
-        until PlayerIsAvailable() 
+        until IsPlayerAvailable()
 
-        if IsPluginEnabled("Vermaxion") then
-            yield('/xldisableplugin "Vermaxion"') --vermaxxion is useful for many things but can trigger on login and prevent henchman from working
-        end
         IPC.Questionable.AddQuestPriority("1433") --ill-gained venture (limsa)
-        if not Henchman_IsBusy() then
-            yield("/henchman RetainerVocate "..tostring(no_of_retainers).." FSH MRD true") --can be changed to whatever you need
-        end
         if IPC.Questionable.IsQuestAccepted("1433") and not IPC.Questionable.IsQuestComplete("1433") and not IPC.Questionable.IsRunning() then
             yield("/qst start")
         end
-        if IPC.Questionable.IsQuestComplete("1433") and IPC.Questionable.IsRunning() and Henchman_IsBusy() then
+        if IPC.Questionable.IsQuestComplete("1433") and IPC.Questionable.IsRunning() then
             yield("/qst stop")
             yield("/ad stop")
         end
-        if CheckPosStuck() then
-            sleep(5.861)
-            if CheckPosStuck() then --don't stop it at summoning bell
-                if Addons.GetAddon("SelectYesno").Ready then
-                    yield('/callback SelectYesno true 1')
-                elseif Addons.GetAddon("SelectString").Ready then
-                    -- Row containers 51001-51008 hold up to 8 visible lines; the first with empty
-                    -- text marks the end of the list, so the row before it is the last real entry
-                    -- -- its callback index is (containerId - 51000), e.g. row 51005 -> callback 5.
-                    local last_visible_id = nil
-                    for cid = 51001, 51008 do
-                        local text = Addons.GetAddon("SelectString"):GetNode(1, 3, cid, 2).Text
-                        if text == "" then
-                            break
-                        end
-                        last_visible_id = cid
-                    end
-                    if last_visible_id then
-                        yield('/callback SelectString true ' .. (last_visible_id - 51000))
-                    end
-                elseif Addons.GetAddon("_CharaMakeTitle").Ready then
-                    yield('/callback _CharaMakeTitle true -1')
-                    yield('/waitaddon "SelectYesno"')
-                    if Addons.GetAddon("SelectYesno").Ready then
-                        yield('/callback SelectYesno true 0')
-                    end
-                end
-                yield("/henchman Stop")
-            end
+
+        -- RunRetainerCreation (see the RetainerMaker block above) blocks synchronously until every
+        -- requested retainer is created, geared and class-assigned -- unlike the old Henchman call,
+        -- there's no "kick it off, then poll across ticks" background state to track here.
+        local current_retainer_count = IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count
+        RunRetainerCreation({ { job = "FSH", amount = no_of_retainers - current_retainer_count } }) --can be changed to whatever job(s) you need
+    ]]elseif Player.GetJob(18).Level < 30 then --!OF timer and leves should also be a condition
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: normal fishing.")
         end
+        repeat
+            sleep(0.678)
+        until IsPlayerAvailable()
+        sleep(2.73)
+
+        local job_swap_attempts = 0
+        local job_swapped = SwapJobFromArmoury(18)
+        while not job_swapped and job_swap_attempts < 4 do
+            job_swap_attempts = job_swap_attempts + 1
+            if debug then
+                yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed, retrying (" .. job_swap_attempts .. "/3)...")
+            end
+            sleep(1.358)
+            job_swapped = SwapJobFromArmoury(18)
+        end
+        yield("/li fisher")
+        local counter = 0
+        repeat
+            sleep(1.376)
+            counter = counter+1
+        until (not IPC.Lifestream.IsBusy() and IsPlayerAvailable()) or counter > 15
+        sleep(3.381)
+        MoveTo(-200.2, 8, 107.5)
+        sleep(0.138)
+        MoveTo(-200.2, 8, 107.5)
+        sleep(0.139)
+        MoveTo(-202.5, 8, 106.1)
+        yield("/ahbait Versatile Lure")
+        sleep(1.386)
+        yield("/ahstart")
+        for i=1, 60 do
+            sleep(13.82)
+        end
+        while Svc.Condition[6] or not IsPlayerAvailable() do
+            yield("/hold S")
+            sleep(0.139)
+            yield("/release S")
+            sleep(0.140)
+        end
+        RelogNext()
+        sleep(13.92)--this is to avoid retriggeting via DTR loop
     elseif not FisherLevelReached() and Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
-            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: fisher leves.")
+            if debug then
+                yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: fisher leves.")
+            end
             repeat
                 sleep(0.678)
-            until PlayerIsAvailable()
+            until IsPlayerAvailable()
             sleep(2.73)
 
             local job_swap_attempts = 0
             local job_swapped = SwapJobFromArmoury(18)
-            while not job_swapped and job_swap_attempts < 3 do
+            while not job_swapped and job_swap_attempts < 4 do
                 job_swap_attempts = job_swap_attempts + 1
                 if debug then
                     yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed, retrying (" .. job_swap_attempts .. "/3)...")
                 end
-                sleep(2)
+                sleep(1.358)
                 job_swapped = SwapJobFromArmoury(18)
             end
 
@@ -979,25 +1451,29 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
                 yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
             end
     elseif os.date("!*t").hour % 2 == 0 and os.date("!*t").min < 12 then
-        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: ocean fishing window.")
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: ocean fishing window.")
+        end
         DoOceanFishing()--not quite, just for now
         if os.date("!*t").min >= 6 then
             DoOceanFishing()
         end
     elseif Player.GCRankImmortalFlames < 9 then --for hunt log !add command/IPC as QST companion updates
-        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: GC rank hunt log, rank=" .. tostring(Player.GCRankImmortalFlames))
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: GC rank hunt log, rank=" .. tostring(Player.GCRankImmortalFlames))
+        end
         repeat
             sleep(0.678)
-        until PlayerIsAvailable()
+        until IsPlayerAvailable()
         sleep(2.73)
         local job_swap_attempts = 0
         local job_swapped = SwapJobFromArmoury(3, 21)
-        while not job_swapped and job_swap_attempts < 3 do
+        while not job_swapped and job_swap_attempts < 4 do
             job_swap_attempts = job_swap_attempts + 1
             if debug then
                 yield("/echo [QSTCC_Ret+FSH(I_F) Job swap failed, retrying (" .. job_swap_attempts .. "/3)...")
             end
-            sleep(2)
+            sleep(1.417)
             job_swapped = SwapJobFromArmoury(3, 21)
         end
 
@@ -1011,7 +1487,9 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
             yield("/echo [QSTCC_Ret+FSH(I_F) Job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
         end
     else
-        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: else (no tasks) -- relogging.")
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: else (no tasks) -- relogging.")
+        end
         sleep(3)
         RelogNext()
     end
