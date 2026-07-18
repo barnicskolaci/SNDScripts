@@ -1236,6 +1236,7 @@ else
 end
 
 MakeGearsets()
+RelogNext()
 
 while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop do
     sleep(0.615)
