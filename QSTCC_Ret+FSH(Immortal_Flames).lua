@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.4
+version: 1.5.5
 triggers:
 - onlogin
 - onterritorychange
@@ -22,7 +22,7 @@ local debug = false
 local FISHER_TARGET_LEVEL = 90
 local no_of_retainers = 2
 
-local hunt_log_queue_active = false --SET THIS MANUALLY
+local skip_main_loop = true --SET THIS MANUALLY if you need it off for stuff like hunt log
 
 function MoveTo(x,y,z)
     local movecounter = 0
@@ -37,8 +37,25 @@ function HasFishAndLeves()
     return false --!will need to check inventory for black sole and the rest and leves
 end
 
-function DoOceanFishing() --get AH or vermaxion or FUTA fishing functionality
-    yield("/e [QSTCC_Ret+FSH(IF)] ! Ocean fishing to come in a future update.")
+-- Fires VERMAXION's manual engine start and waits out a bounded ceiling before moving on. SND has no
+-- IPC wrapper for VERMAXION (only plugins with a purpose-built IPC.cs inside SND itself are callable
+-- from Lua -- confirmed against SND's own IPCModule.cs), so there's no clean "voyage complete" signal
+-- to poll; a real voyage is a fixed 15min fishing window plus travel/registration/cleanup overhead,
+-- so 25 minutes covers it with margin. Swaps to Fisher and saves gearset slot 2 first so VERMAXION's
+-- Fisher-gearset check has something to find -- still needs the character/account enabled and an
+-- XADB fisher level set in VERMAXION's own config, which this can't do for you.
+function DoOceanFishing()
+    local job_swapped = SwapJobFromArmoury(18)
+    if job_swapped then
+        yield("/gs save 2")
+    end
+    yield("/e [QSTCC_Ret+FSH(IF)] ! Starting ocean fishing via VERMAXION.")
+    yield("/vmx run")
+    local counter = 0
+    repeat
+        sleep(30)
+        counter = counter + 1
+    until IsPlayerAvailable() and counter >= 50
     RelogNext()
 end
 
@@ -52,11 +69,59 @@ function IsPluginEnabled(name)
 end
 
 function IsPlayerAvailable()
-    if Entity.Player and Player.Available and not Entity.Player.IsCasting and not Svc.Condition[45] and not Svc.Condition[51] and not Svc.Condition[58] and not Svc.Condition[78] and not Svc.Condition[50] and not Svc.Condition[32] then
-        return true
-    else
+
+    if not Player.Available then
         return false
     end
+
+    if Entity.Player.IsCasting then
+        return false
+    end
+
+    local occupiedFlags = {
+        25, -- Occupied
+        30, -- Occupied30
+        33, -- Occupied33
+        38, -- Occupied38
+        39, -- Occupied39
+        35, -- OccupiedInCutSceneEvent
+        31, -- OccupiedInEvent
+        32, -- OccupiedInQuestEvent
+        50, -- OccupiedSummoningBell
+        52, -- WatchingCutscene
+        78, -- WatchingCutscene78
+        45, -- BetweenAreas
+        51, -- BetweenAreas51
+        11, -- InThatPosition
+        5,  -- Crafting
+        40, -- ExecutingCraftingAction
+        41, -- PreparingToCraft
+        2,  -- Dead (Unconscious)
+        6,  -- MeldingMateria
+        7,  -- Gathering
+        65, -- CarryingItem
+        70, -- BeingMoved
+        10, -- RidingPillion
+        66, -- Mounting
+        71, -- Mounting71
+        15, -- ParticipatingInCustomMatch
+        14, -- PlayingLordOfVerminion
+        12, -- ChocoboRacing
+        13, -- PlayingMiniGame
+        18, -- Performing
+        43, -- Fishing
+        68, -- Transformed
+        67, -- UsingHousingFunctions
+    }
+
+    local c = Svc.Condition
+    for i = 1, #occupiedFlags do
+        if c[occupiedFlags[i]] then
+            return false
+        end
+    end
+
+    return true
 end
 
 function FisherLevelReached()
@@ -1109,6 +1174,19 @@ function RunRetainerCreation(jobs)
     return created
 end
 
+function MakeGearsets()
+    if not Player.GetGearset(1).IsValid or not Player.GetGearset(2).IsValid then
+        local job_swapped = SwapJobFromArmoury(18)
+        if job_swapped then
+            yield("/gs save 2")
+        end
+        sleep(1.626)
+        job_swapped = SwapJobFromArmoury(3, 21)
+        if job_swapped then
+            yield("/gs save 1")
+        end
+    end
+end
 
 --[[###################################################################################################################################
 ###########           ####             ####           #####   ###            ####                   ###################################
@@ -1137,16 +1215,19 @@ repeat
     sleep(0.613)
 until IsPlayerAvailable()
 
-if debug then
-    yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] Main loop entry: DTR exists=" .. tostring(Addons.GetAddon("_DTR").Exists) .. " hunt_log_queue_active=" .. tostring(hunt_log_queue_active) .. " all_quests_complete=" .. tostring(all_quests_complete))
-end
-if hunt_log_queue_active then
+if skip_main_loop then
     if debug then
-        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] hunt_log_queue_active is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] skip_main_loop is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
+    end
+else
+    if debug then
+        yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] Main loop entry: DTR exists=" .. tostring(Addons.GetAddon("_DTR").Exists) .. " skip_main_loop=" .. tostring(skip_main_loop) .. " all_quests_complete=" .. tostring(all_quests_complete))
     end
 end
 
-while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_active do
+MakeGearsets()
+
+while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop do
     sleep(0.615)
     local ok_retainer_count, retainer_count = pcall(function()
         return IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count
@@ -1514,10 +1595,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not hunt_log_queue_a
         if debug then
             yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: ocean fishing window.")
         end
-        DoOceanFishing()--not quite, just for now
-        if os.date("!*t").min >= 6 then
-            DoOceanFishing()
-        end
+        DoOceanFishing()
     elseif Player.GCRankImmortalFlames < 9 then --for hunt log !add command/IPC as QST companion updates
         if debug then
             yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: GC rank hunt log, rank=" .. tostring(Player.GCRankImmortalFlames))
