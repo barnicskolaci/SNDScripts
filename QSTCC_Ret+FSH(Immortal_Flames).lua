@@ -1180,11 +1180,21 @@ function MakeGearsets()
         if job_swapped then
             yield("/gs save 2")
         end
+                yield('/waitaddon "SelectYesno"')
+                if Addons.GetAddon("SelectYesno").Ready then
+                    sleep(0.1)
+                    yield("/click SelectYesno Yes")
+                end
         sleep(1.626)
         job_swapped = SwapJobFromArmoury(3, 21)
         if job_swapped then
             yield("/gs save 1")
         end
+                yield('/waitaddon "SelectYesno"')
+                if Addons.GetAddon("SelectYesno").Ready then
+                    sleep(0.1)
+                    yield("/click SelectYesno Yes")
+                end
     end
 end
 
