@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.5
+version: 1.5.5.1
 triggers:
 - onlogin
 - onterritorychange
@@ -1175,26 +1175,29 @@ function RunRetainerCreation(jobs)
 end
 
 function MakeGearsets()
-    if not Player.GetGearset(1).IsValid or not Player.GetGearset(2).IsValid then
+    if Player.GetGearset(1).ClassJob ~= 18 then
         local job_swapped = SwapJobFromArmoury(18)
         if job_swapped then
             yield("/gs save 2")
         end
-                yield('/waitaddon "SelectYesno"')
-                if Addons.GetAddon("SelectYesno").Ready then
-                    sleep(0.1)
-                    yield("/click SelectYesno Yes")
-                end
-        sleep(1.626)
-        job_swapped = SwapJobFromArmoury(3, 21)
+        yield('/waitaddon "SelectYesno"')
+        if Addons.GetAddon("SelectYesno").Ready then
+            sleep(0.1)
+            yield("/click SelectYesno Yes")
+        end
+    sleep(1.626)
+    end
+    if Player.GetGearset(0).ClassJob ~= 3 and Player.GetGearset(1).ClassJob ~= 21 then
+        local job_swapped = SwapJobFromArmoury(3, 21)
         if job_swapped then
             yield("/gs save 1")
         end
-                yield('/waitaddon "SelectYesno"')
-                if Addons.GetAddon("SelectYesno").Ready then
-                    sleep(0.1)
-                    yield("/click SelectYesno Yes")
-                end
+        yield('/waitaddon "SelectYesno"')
+        if Addons.GetAddon("SelectYesno").Ready then
+            sleep(0.1)
+            yield("/click SelectYesno Yes")
+        end
+        sleep(1.200)
     end
 end
 
