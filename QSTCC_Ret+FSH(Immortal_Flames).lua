@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.7
+version: 1.5.7.1
 triggers:
 - onlogin
 - onterritorychange
@@ -1582,7 +1582,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
         -- there's no "kick it off, then poll across ticks" background state to track here.
         local current_retainer_count = IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count
         RunRetainerCreation({ { job = "FSH", amount = no_of_retainers - current_retainer_count } }) --can be changed to whatever job(s) you need
-    elseif Player.GetJob(18).Level < 15 then --!OF timer and leves should also be a condition
+    elseif Player.GetJob(18).Level < 14 then --!OF timer and leves should also be a condition
         if debug then
             yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: normal fishing.")
         end
@@ -1648,7 +1648,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
         yield("/ahstart")
         for cycle=1, 60 do --!add level requierement too
             sleep(13.82)
-            if Player.GetJob(18).Level > 14 then
+            if Player.GetJob(18).Level > 13 then
                 break
             end
         end
@@ -1660,7 +1660,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
         end
         RelogNext(true)
         sleep(13.92)--this is to avoid retriggeting via DTR loop
-    elseif not FisherLevelReached() and Player.GetJob(18).Level >= 15 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
+    elseif not FisherLevelReached() and Player.GetJob(18).Level >= 14 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
             if debug then
                 yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: fisher leves.")
             end
