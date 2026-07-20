@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.7.1
+version: 1.5.7.2
 triggers:
 - onlogin
 - onterritorychange
@@ -1084,11 +1084,13 @@ function BuyRetainerGear(job_details)
     end
 
     sleep(0.3)
+    yield('/waitaddon "Shop"')
     if Addons.GetAddon("Shop").Ready then
         yield('/callback "Shop" true -1')
     end
 
     sleep(0.3) -- settle delay before firing a callback into a just-opened addon
+    yield('/waitaddon "SelectString"')
     if Addons.GetAddon("SelectString").Ready then
         -- Farewell/close dialogue option -- index carried over from the
         -- original script, unverified against the current text. QSTCC_RET's
