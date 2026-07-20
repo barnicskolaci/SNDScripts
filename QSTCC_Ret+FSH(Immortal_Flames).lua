@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.5.1
+version: 1.5.6
 triggers:
 - onlogin
 - onterritorychange
@@ -15,14 +15,22 @@ function_chat_filters:
 import("System")
 import("System.Numerics")
 
+--[[###########
+### CONFIGS ###
+##############]]
+
+
 local tp_error = false
-local interactioncount = 0
-local targetName = nil
 local debug = false
 local FISHER_TARGET_LEVEL = 90
 local no_of_retainers = 2
 
-local skip_main_loop = true --SET THIS MANUALLY if you need it off for stuff like hunt log
+local skip_main_loop = false --SET THIS MANUALLY to true for hunt log
+--for retainer making, use QST Companion and leave this on false
+
+--[[###########
+## FUNCTIONS ##
+#############]]
 
 function MoveTo(x,y,z)
     local movecounter = 0
@@ -34,7 +42,7 @@ function MoveTo(x,y,z)
 end
 
 function HasFishAndLeves()
-    return false --!will need to check inventory for black sole and the rest and leves
+    return true --!will need to check inventory for black sole and the rest and leves
 end
 
 -- Fires VERMAXION's manual engine start and waits out a bounded ceiling before moving on. SND has no
@@ -45,18 +53,18 @@ end
 -- Fisher-gearset check has something to find -- still needs the character/account enabled and an
 -- XADB fisher level set in VERMAXION's own config, which this can't do for you.
 function DoOceanFishing()
-    local job_swapped = SwapJobFromArmoury(18)
-    if job_swapped then
-        yield("/gs save 2")
+    if true then
+        RelogNext()
+        return --take out when ready
     end
+    local job_swapped = SwapJobFromArmoury(18)
     yield("/e [QSTCC_Ret+FSH(IF)] ! Starting ocean fishing via VERMAXION.")
     yield("/vmx run")
     local counter = 0
     repeat
         sleep(30)
         counter = counter + 1
-    until IsPlayerAvailable() and counter >= 50
-    RelogNext()
+    until IsPlayerAvailable() and counter >= 70
 end
 
 function IsPluginEnabled(name)
@@ -1238,8 +1246,9 @@ else
     end
 end
 
-MakeGearsets()
-RelogNext()
+if all_quests_complete then --make gearsets for FSH and MRD cause some plugins NEED it
+    MakeGearsets()
+end
 
 while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop do
     sleep(0.615)
@@ -1453,7 +1462,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
         positionHistory = {}
         end
         -- CheckPosStuck() end
-    --[[elseif IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers then --!needs fixing, including functions
+    elseif IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count < no_of_retainers then --!needs fixing, including functions
         if debug then
             yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: retainer creation.")
         end
@@ -1461,13 +1470,18 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
             sleep(0.859)
         until IsPlayerAvailable()
 
-        IPC.Questionable.AddQuestPriority("1433") --ill-gained venture (limsa)
-        if IPC.Questionable.IsQuestAccepted("1433") and not IPC.Questionable.IsQuestComplete("1433") and not IPC.Questionable.IsRunning() then
-            yield("/qst start")
+        IPC.Questionable.AddQuestPriority("1433")
+        if  Svc.ClientState.TerritoryType ~= 129 and Svc.ClientState.TerritoryType ~= 138 then
+            yield("/li limsa")
         end
-        if IPC.Questionable.IsQuestComplete("1433") and IPC.Questionable.IsRunning() then
-            yield("/qst stop")
-            yield("/ad stop")
+        while not IPC.Questionable.IsQuestComplete("1433") do
+            if CheckPosStuck() and IsPlayerAvailable() and IsPlayerCloseTo(-145.8, 18.2, 19.3, 16) and not Entity.Target then
+                yield("/qst start")
+            end
+            sleep(4)
+            if IPC.Questionable.IsQuestComplete("1433") then
+                yield("/qst stop")
+            end
         end
 
         -- RunRetainerCreation (see the RetainerMaker block above) blocks synchronously until every
@@ -1475,7 +1489,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
         -- there's no "kick it off, then poll across ticks" background state to track here.
         local current_retainer_count = IPC.AutoRetainer.GetOfflineCharacterData(Entity.Player.ContentId).RetainerData.Count
         RunRetainerCreation({ { job = "FSH", amount = no_of_retainers - current_retainer_count } }) --can be changed to whatever job(s) you need
-    ]]elseif Player.GetJob(18).Level < 30 then --!OF timer and leves should also be a condition
+    elseif Player.GetJob(18).Level < 15 then --!OF timer and leves should also be a condition
         if debug then
             yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: normal fishing.")
         end
@@ -1553,7 +1567,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
         end
         RelogNext()
         sleep(13.92)--this is to avoid retriggeting via DTR loop
-    elseif not FisherLevelReached() and Player.GetJob(18).Level >= 30 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
+    elseif not FisherLevelReached() and Player.GetJob(18).Level >= 15 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
             if debug then
                 yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] branch: fisher leves.")
             end
@@ -1574,8 +1588,13 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
             end
 
             if job_swapped then
-                yield("/chilledleves start")
-
+                if Player.GetJob(18).Level < 30 then
+                    yield("/chilledleves setup gather")
+                    sleep(0.150)
+                    yield("/chilledleves start gather")
+                else
+                    yield("/chilledleves start")
+                end
                 -- ChilledLeves exposes no IPC and no "still running" flag we can read from SND, so
                 -- progress is inferred from Fisher level: relies on ChilledLeves' own worklist
                 -- (pre-populated by hand, shared across characters via its plugin config) for which
@@ -1584,9 +1603,9 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
                 -- "nothing left this character can turn in right now" and we move on.
                 local last_level = Player.GetJob(18).Level
                 local stagnant_checks = 0
-                while Addons.GetAddon("_DTR").Exists and not FisherLevelReached() and stagnant_checks < 30 do
+                while Addons.GetAddon("_DTR").Exists and not FisherLevelReached() and stagnant_checks < 6 do
+                    yield("/gaction sprint")
                     sleep(30)
-                    AddonHandler(addonConfigs)
                     local current_level = Player.GetJob(18).Level
                     if current_level > last_level then
                         last_level = current_level
