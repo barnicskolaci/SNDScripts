@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.6
+version: 1.5.7
 triggers:
 - onlogin
 - onterritorychange
@@ -585,6 +585,22 @@ function SwapJobFromArmoury(...)
         end
     end
 
+    -- No owned armoury weapon covers any of the requested jobs -- buy one starter weapon for
+    -- the first requested job (BuyAndEquipPlayerMainHand/BuyRetainerGear, defined further down
+    -- this file) and retry the equip check once, rather than giving up outright.
+    local job_details = GetJobDataForJobId(targetJobIds[1])
+    if job_details then
+        yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: no armoury item for job " .. targetJobIds[1] .. ", buying " .. job_details.jobName .. " starter weapon.")
+        if BuyAndEquipPlayerMainHand(job_details) and IsPlayerAvailable() and Player.Job then
+            for _, jobId in ipairs(targetJobIds) do
+                if Player.Job.Id == jobId then
+                    EquipRecommendedGear()
+                    return true
+                end
+            end
+        end
+    end
+
     yield("/echo [QSTCC_Ret+FSH(I_F) SwapJobFromArmoury: no armoury item equipped the requested job.")
     return false
 end
@@ -641,15 +657,17 @@ local function ClearRotationState()
     os.remove(rotation_state_file)
 end
 
--- Usage: RelogNext()
+-- Usage: RelogNext() or RelogNext(true)
 -- Finds the current character's CID in AutoRetainer's registered character list and relogs
--- into whichever character is next in that list. Stops (returns false, no relog issued) once
--- the next character in line would be the one this rotation pass started on, so a full roster
--- gets processed exactly once instead of cycling forever.
+-- into whichever character is next in that list. By default, stops (returns false, no relog
+-- issued, logs out) once the next character in line would be the one this rotation pass
+-- started on, so a full roster gets processed exactly once instead of cycling forever. Pass
+-- loop=true to keep the toons looping instead: on wraparound it just relogs into the next
+-- character (restarting the roster) rather than stopping, forever.
 -- Uses /ays relog (-> MultiMode.Relog) directly rather than the PluginState.Relog IPC method:
 -- that IPC call gates on CanAutoLogin(), which requires being logged OUT at the title screen,
 -- so it always rejects when called while playing (confirmed against the installed AR build).
-function RelogNext()
+function RelogNext(loop)
     if not Entity.Player then
         yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: no local player, aborting.")
         return false
@@ -657,6 +675,7 @@ function RelogNext()
 
     local current_cid = Entity.Player.ContentId
     local registered_cids = IPC.AutoRetainer.GetRegisteredCharacters()
+    local loop = loop or false
 
     local current_index = nil
     for i = 0, registered_cids.Count - 1 do
@@ -684,15 +703,23 @@ function RelogNext()
     local next_cid = registered_cids[next_index]
 
     if next_cid == pass_start_cid then
-        yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: full rotation complete, every character has been processed. Stopping.")
-        ClearRotationState()
-        yield("/logout")
-        sleep(3)
-        if Addons.GetAddon("SelectYesno").Ready then
-            sleep(0.1)
-            yield("/click SelectYesno Yes")
+        if not loop then
+            yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: full rotation complete, every character has been processed. Stopping.")
+            ClearRotationState()
+            yield("/logout")
+            sleep(3)
+            if Addons.GetAddon("SelectYesno").Ready then
+                sleep(0.1)
+                yield("/click SelectYesno Yes")
+            end
+            return false
         end
-        return false
+        if debug then
+            yield("/echo [QSTCC_Ret+FSH(I_F) RelogNext: full rotation complete, looping back to the start of the roster.")
+        end
+        -- Deliberately does NOT ClearRotationState() -- pass_start_cid stays pinned to the
+        -- original roster-start CID across every future relog, so each subsequent lap keeps
+        -- wrapping back through this same branch instead of drifting to a new "start".
     end
 
     local next_char = IPC.AutoRetainer.GetOfflineCharacterData(next_cid)
@@ -734,6 +761,34 @@ local RETAINER_JOB_DATA = {
 
 function GetRetainerJobDetails(job)
     return RETAINER_JOB_DATA[job]
+end
+
+-- Reverse-maps a ClassJob RowId to its base class's RETAINER_JOB_DATA entry -- used by
+-- SwapJobFromArmoury to buy a starter weapon when the player owns no armoury piece for the
+-- requested job. Advanced jobs (e.g. WAR/21) map back to their base class (MRD) since that's
+-- the weapon category the vendor actually sells; equipping it auto-resolves to the advanced
+-- job once unlocked.
+local JOB_ID_TO_BASE_ABBR = {
+    [1] = "GLA", [19] = "GLA",
+    [2] = "PGL", [20] = "PGL",
+    [3] = "MRD", [21] = "MRD",
+    [4] = "LNC", [22] = "LNC",
+    [29] = "ROG", [30] = "ROG",
+    [5] = "ARC", [23] = "ARC",
+    [6] = "CNJ", [24] = "CNJ",
+    [7] = "THM", [25] = "THM",
+    [26] = "ACN", [27] = "ACN", [28] = "ACN",
+    [16] = "MIN",
+    [17] = "BTN",
+    [18] = "FSH",
+}
+
+function GetJobDataForJobId(jobId)
+    local abbr = JOB_ID_TO_BASE_ABBR[jobId]
+    if not abbr then
+        return nil
+    end
+    return GetRetainerJobDetails(abbr)
 end
 
 -- Generic SelectString entry finder, by exact visible text. Reuses the node-ID
@@ -1014,11 +1069,26 @@ function BuyRetainerGear(job_details)
     end
 
     yield('/callback "Shop" true 0 ' .. slot .. ' 1')
-    sleep(0.3)
-    yield('/callback "Shop" true -1')
+    
+    sleep(0.1)
+    yield('/waitaddon "SelectYesno"') --there's a 2nd one here in case you need to confirm the purchase due to being unable to equip
+    if Addons.GetAddon("SelectYesno").Ready then
+        sleep(0.1)
+        yield("/click SelectYesno Yes")
+    end
+    sleep(0.1)
+    yield('/waitaddon "SelectYesno"')
+    if Addons.GetAddon("SelectYesno").Ready then
+        sleep(0.1)
+        yield("/click SelectYesno Yes")
+    end
 
-    yield('/waitaddon "SelectString"')
-    sleep(0.1) -- settle delay before firing a callback into a just-opened addon
+    sleep(0.3)
+    if Addons.GetAddon("Shop").Ready then
+        yield('/callback "Shop" true -1')
+    end
+
+    sleep(0.3) -- settle delay before firing a callback into a just-opened addon
     if Addons.GetAddon("SelectString").Ready then
         -- Farewell/close dialogue option -- index carried over from the
         -- original script, unverified against the current text. QSTCC_RET's
@@ -1040,6 +1110,29 @@ function EquipRetainerWeapon(itemID)
     end
     item:MoveItemSlotToSlot(InventoryType.RetainerEquippedItems, 0)
     sleep(0.3)
+    return true
+end
+
+-- Buys one starter main-hand weapon for job_details and equips it onto the PLAYER character
+-- (not a retainer) -- reuses BuyRetainerGear's vendor-shopping flow since the purchase lands
+-- in the acting player's own inventory regardless of who it's ultimately equipped on, then
+-- moves it into EquippedItems (mirrors EquipRetainerWeapon's RetainerEquippedItems move above).
+function BuyAndEquipPlayerMainHand(job_details)
+    yield("/li hawkers")
+    repeat
+        sleep(4)
+    until not IPC.Lifestream.IsBusy() and IsPlayerAvailable()
+    if not BuyRetainerGear(job_details) then
+        return false
+    end
+    local InventoryType = luanet.import_type("FFXIVClientStructs.FFXIV.Client.Game.InventoryType")
+    local item = Inventory.GetInventoryItem(job_details.itemID)
+    if not item then
+        yield("/echo [QSTCC_Ret+FSH(I_F) BuyAndEquipPlayerMainHand: purchased item " .. job_details.itemID .. " not found in inventory.")
+        return false
+    end
+    item:MoveItemSlotToSlot(InventoryType.EquippedItems, 0)
+    sleep(0.5)
     return true
 end
 
@@ -1565,7 +1658,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
             yield("/release S")
             sleep(0.140)
         end
-        RelogNext()
+        RelogNext(true)
         sleep(13.92)--this is to avoid retriggeting via DTR loop
     elseif not FisherLevelReached() and Player.GetJob(18).Level >= 15 and HasFishAndLeves() then --fisher leves in Costa via ChilledLeves
             if debug then
@@ -1620,7 +1713,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
                     yield("/echo [QSTCC_Ret+FSH(I_F) Fisher leveling paused at level " .. tostring(Player.GetJob(18).Level) .. " (target " .. FISHER_TARGET_LEVEL .. ").")
                 end
                 sleep(1.734)
-                RelogNext()
+                RelogNext(true)
             else
                 yield("/echo [QSTCC_Ret+FSH(I_F) Fisher job swap failed after " .. job_swap_attempts .. " retries, skipping relog this pass.")
             end
@@ -1650,7 +1743,7 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
 
         if job_swapped then
             sleep(1.734)
-            RelogNext()
+            RelogNext(true)
             while Addons.GetAddon("_DTR").Exists and Player.GCRankImmortalFlames < 9 do
                 sleep(10.679)
             end
