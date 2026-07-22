@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.7.2
+version: 1.5.8
 triggers:
 - onlogin
 - onterritorychange
@@ -1314,7 +1314,6 @@ end
 ###########           ####             ####   ######   ####   ###   #####################   ###########################################
 #####################################################################################################################################]]
 
-
 if not debug then
     yield("/dps wloadall") --this is for Dhog Potato System window placement
 end
@@ -1330,6 +1329,11 @@ local all_quests_complete = AllQuestsComplete()
 repeat
     sleep(0.613)
 until IsPlayerAvailable()
+
+yield("/li")
+repeat
+    sleep(1.323)
+until not IPC.Lifestream.IsBusy() and IsPlayerAvailable()
 
 if skip_main_loop then
     if debug then
@@ -1685,11 +1689,11 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
             if job_swapped then
                 if Player.GetJob(18).Level < 30 then
                     yield("/chilledleves setup gather")
-                    sleep(0.150)
-                    yield("/chilledleves start gather")
                 else
-                    yield("/chilledleves start")
+                    yield("/chilledleves setup gather nahctahr")
                 end
+                sleep(0.150)
+                yield("/chilledleves start gather")
                 -- ChilledLeves exposes no IPC and no "still running" flag we can read from SND, so
                 -- progress is inferred from Fisher level: relies on ChilledLeves' own worklist
                 -- (pre-populated by hand, shared across characters via its plugin config) for which
@@ -1698,11 +1702,11 @@ while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop d
                 -- "nothing left this character can turn in right now" and we move on.
                 local last_level = Player.GetJob(18).Level
                 local stagnant_checks = 0
-                while Addons.GetAddon("_DTR").Exists and not FisherLevelReached() and stagnant_checks < 6 do
+                while Addons.GetAddon("_DTR").Exists and not FisherLevelReached() and stagnant_checks < 4 do
                     yield("/gaction sprint")
-                    sleep(30)
+                    sleep(10)
                     local current_level = Player.GetJob(18).Level
-                    if current_level > last_level then
+                    if current_level > last_level or not CheckPosStuck() then
                         last_level = current_level
                         stagnant_checks = 0
                     else
