@@ -36,10 +36,10 @@ local skip_main_loop = true --SET THIS MANUALLY to true for hunt log
 function MoveTo(x,y,z)
     local movecounter = 0
     IPC.vnavmesh.PathfindAndMoveTo(Vector3(x, y, z), false)
-    while IPC.vnavmesh.IsRunning() and movecounter < 20 do
-        sleep(1.437)
+    repeat
+        sleep(0.537)
         movecounter = movecounter + 1
-    end
+    until not IPC.vnavmesh.IsRunning() and movecounter < 20
 end
 
 function HasFishAndLeves()
