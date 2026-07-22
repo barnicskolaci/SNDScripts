@@ -1,6 +1,6 @@
 --[=====[
 [[SND Metadata]]
-version: 1.5.8
+version: 1.5.9
 triggers:
 - onlogin
 - onterritorychange
@@ -24,8 +24,9 @@ local tp_error = false
 local debug = false
 local FISHER_TARGET_LEVEL = 90
 local no_of_retainers = 2
+local return_home = true
 
-local skip_main_loop = false --SET THIS MANUALLY to true for hunt log
+local skip_main_loop = true --SET THIS MANUALLY to true for hunt log
 --for retainer making, use QST Companion and leave this on false
 
 --[[###########
@@ -1330,10 +1331,20 @@ repeat
     sleep(0.613)
 until IsPlayerAvailable()
 
-yield("/li")
-repeat
-    sleep(1.323)
-until not IPC.Lifestream.IsBusy() and IsPlayerAvailable()
+if return_home then
+    yield("/li")
+    repeat
+        sleep(1.323)
+    until not IPC.Lifestream.IsBusy() and IsPlayerAvailable()
+
+    if Svc.ClientState.TerritoryType ~= 129 then
+        yield("/li limsa")
+        repeat
+            sleep(1.323)
+        until not IPC.Lifestream.IsBusy() and IsPlayerAvailable()
+    end
+    MoveTo(-122.2, 18, 19.3)
+end
 
 if skip_main_loop then
     if debug then
