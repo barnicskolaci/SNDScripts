@@ -1346,18 +1346,19 @@ if return_home then
     MoveTo(-122.2, 18, 19.3)
 end
 
+if all_quests_complete then --make gearsets for FSH and MRD cause some plugins NEED it
+    MakeGearsets()
+end
+
 if skip_main_loop then
     if debug then
         yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] skip_main_loop is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
     end
+    RelogNext()
 else
     if debug then
         yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] Main loop entry: DTR exists=" .. tostring(Addons.GetAddon("_DTR").Exists) .. " skip_main_loop=" .. tostring(skip_main_loop) .. " all_quests_complete=" .. tostring(all_quests_complete))
     end
-end
-
-if all_quests_complete then --make gearsets for FSH and MRD cause some plugins NEED it
-    MakeGearsets()
 end
 
 while (Addons.GetAddon("_DTR").Exists or Entity.Player) and not skip_main_loop do
