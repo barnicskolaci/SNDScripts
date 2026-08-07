@@ -149,7 +149,7 @@ local is_fisher = EnsureFisher()
 local allowances = GetLeveAllowances() or 0
 local name = tostring(Entity.Player and Entity.Player.Name or "?")
 
-if is_fisher and allowances > 0 then
+if is_fisher and allowances > 12 then
     yield("/echo [FSH_PostAR] " .. name .. ": " .. allowances .. " leve allowances, starting gather.")
 
     -- Costa/tmokkri set below Fisher 30, Nahctahr set at 30+.
@@ -188,6 +188,16 @@ if is_fisher and allowances > 0 then
 
     yield("/chilledleves stop")
     sleep(1.0)
+
+    -- ChilledLeves can leave the levemete's GuildLeve / JournalDetail (leve accept) windows open when
+    -- it stops mid-flow; close them so the toon is never stranded on the accept window (an open window
+    -- blocks the /li inn teleport and the AR relog). Bounded ESCAPE presses.
+    local esc = 0
+    while (Addons.GetAddon("GuildLeve").Ready or Addons.GetAddon("JournalDetail").Ready) and esc < 8 do
+        yield("/send ESCAPE")
+        sleep(0.5)
+        esc = esc + 1
+    end
 else
     yield("/echo [FSH_PostAR] " .. name .. ": skipping leves (fisher=" .. tostring(is_fisher)
         .. ", allowances=" .. allowances .. ").")
