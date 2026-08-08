@@ -126,6 +126,15 @@ function EnsureFisher()
     return false
 end
 
+-- Ocean-fishing windows open every EVEN UTC hour (epoch multiples of 7200s -- epoch 0 = 1970-01-01
+-- 00:00 UTC, an even hour). Returns seconds until the next window. Used to keep a leve run from STARTING
+-- inside the ~10-minute pre-window buffer, so VMX can register + board the toon when the window opens
+-- (VMX owns fishing; leves only fill the off-window gaps).
+function SecondsUntilFishingWindow()
+    local into = os.time() % 7200
+    return (7200 - into) % 7200
+end
+
 --[[###########
 ### POSTPROCESS BODY (runs once per character) ###
 ##############]]
@@ -149,8 +158,13 @@ local is_fisher = EnsureFisher()
 local allowances = GetLeveAllowances() or 0
 local name = tostring(Entity.Player and Entity.Player.Name or "?")
 
-if is_fisher and allowances > 12 then
-    yield("/echo [FSH_PostAR] " .. name .. ": " .. allowances .. " leve allowances, starting gather.")
+-- Time-gate: never START a leve run within 10 minutes (600s) before an ocean-fishing window -- a run can
+-- teleport the toon away and overrun into the window, and VMX must have it free to register + board.
+-- Off-window this is always true so leves run normally. Skipped toons fall through to inn-park + release.
+local secs_to_fishing = SecondsUntilFishingWindow()
+if is_fisher and allowances > 12 and secs_to_fishing > 600 then
+    yield("/echo [FSH_PostAR] " .. name .. ": " .. allowances .. " leve allowances, "
+        .. math.floor(secs_to_fishing / 60) .. "min to fishing, starting gather.")
 
     -- Costa/tmokkri set below Fisher 30, Nahctahr set at 30+.
     if Player.GetJob(18).Level < 30 then
@@ -200,7 +214,7 @@ if is_fisher and allowances > 12 then
     end
 else
     yield("/echo [FSH_PostAR] " .. name .. ": skipping leves (fisher=" .. tostring(is_fisher)
-        .. ", allowances=" .. allowances .. ").")
+        .. ", allowances=" .. allowances .. ", secs_to_fishing=" .. secs_to_fishing .. ").")
 end
 
 -- Park at the inn (has a summoning bell, so AR can process this toon in place next rotation), then

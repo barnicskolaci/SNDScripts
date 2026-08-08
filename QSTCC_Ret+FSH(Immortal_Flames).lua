@@ -24,7 +24,7 @@ local tp_error = false
 local debug = false
 local FISHER_TARGET_LEVEL = 90
 local no_of_retainers = 2
-local return_home = true
+local return_home = false
 
 local skip_main_loop = true --SET THIS MANUALLY to true for hunt log
 --for retainer making, use QST Companion and leave this on false
@@ -1354,7 +1354,11 @@ if skip_main_loop then
     if debug then
         yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] skip_main_loop is TRUE -- main loop will NOT run at all. Set it to false to resume normal automation.")
     end
-    RelogNext()
+    if loop == 2 then    
+        RelogNext(true)
+    elseif loop == 1 then
+        RelogNext()
+    end
 else
     if debug then
         yield("/echo [QSTCC_Ret+FSH(I_F) DEBUG] Main loop entry: DTR exists=" .. tostring(Addons.GetAddon("_DTR").Exists) .. " skip_main_loop=" .. tostring(skip_main_loop) .. " all_quests_complete=" .. tostring(all_quests_complete))
